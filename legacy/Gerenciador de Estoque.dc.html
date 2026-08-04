@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<template id="__bundler_thumbnail" data-bg-color="#f3f2f2">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#f3f2f2"/>
+    <rect x="120" y="220" width="960" height="360" fill="none" stroke="#b68235" stroke-width="4"/>
+    <line x1="120" y1="320" x2="1080" y2="320" stroke="#b68235" stroke-width="2"/>
+    <text x="600" y="290" font-family="Georgia, serif" font-size="64" fill="#201f1d" text-anchor="middle">Estoque</text>
+  </svg>
+</template>
+<helmet>
+<link rel="stylesheet" href="_ds/classical-ebb94b3d-0a8d-40b9-b4fd-0db64b035da0/styles.css">
+<style>
+  body { margin: 0; }
+  input, select, button { font-family: inherit; }
+  ::placeholder { color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+</style>
+</helmet>
+<div style="display:flex; min-height:100vh; font-family: var(--font-body); background: var(--color-bg); color: var(--color-text);">
+
+  <div style="width:220px; flex-shrink:0; padding:32px 24px; display:flex; flex-direction:column; gap:2px; border-right:1px solid var(--color-divider);">
+    <div style="font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:22px; margin-bottom:28px; letter-spacing:-0.01em;">Estoque</div>
+    <button onClick="{{ goProdutos }}" style="{{ navBtnStyleProdutos }}" style-hover="color:var(--color-accent);">Produtos</button>
+    <button onClick="{{ goEstoque }}" style="{{ navBtnStyleEstoque }}" style-hover="color:var(--color-accent);">Estoque</button>
+    <button onClick="{{ goCaixa }}" style="{{ navBtnStyleCaixa }}" style-hover="color:var(--color-accent);">Caixa</button>
+    <button onClick="{{ goFinanceiro }}" style="{{ navBtnStyleFinanceiro }}" style-hover="color:var(--color-accent);">Financeiro</button>
+  </div>
+
+  <div style="flex:1; padding:40px 48px; overflow-x:auto;">
+
+    <sc-if value="{{ isProdutos }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <h1 style="font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:32px; margin:0 0 24px; letter-spacing:-0.01em;">Produtos</h1>
+
+        <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:20px; margin-bottom:24px; max-width:720px;">
+          <div style="font-size:13px; font-weight:700; color: color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:14px;">{{ productFormTitle }}</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <label style="grid-column:1/-1; display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Nome do produto
+              <input value="{{ productForm.nome }}" onChange="{{ pfNome }}" placeholder="Ex: Arroz 5kg" style="{{ inputStyle }}" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Unidade
+              <select value="{{ productForm.unidade }}" onChange="{{ pfUnidade }}" style="{{ inputStyle }}">
+                <option value="un">unidade (un)</option>
+                <option value="kg">quilo (kg)</option>
+                <option value="g">grama (g)</option>
+                <option value="l">litro (l)</option>
+                <option value="ml">mililitro (ml)</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Preço de venda (R$)
+              <input type="number" step="0.01" value="{{ productForm.precoVenda }}" onChange="{{ pfPrecoVenda }}" placeholder="0,00" style="{{ inputStyle }}" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">NCM
+              <input value="{{ productForm.ncm }}" onChange="{{ pfNcm }}" placeholder="0000.00.00" style="{{ inputStyle }}" />
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">CEST
+              <input value="{{ productForm.cest }}" onChange="{{ pfCest }}" placeholder="00.000.00" style="{{ inputStyle }}" />
+            </label>
+            <sc-if value="{{ isCreatingProduct }}" hint-placeholder-val="{{ true }}">
+              <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Custo de compra inicial (R$)
+                <input type="number" step="0.01" value="{{ productForm.custoInicial }}" onChange="{{ pfCustoInicial }}" placeholder="0,00" style="{{ inputStyle }}" />
+              </label>
+              <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Quantidade em estoque
+                <input type="number" step="1" value="{{ productForm.estoqueInicial }}" onChange="{{ pfEstoqueInicial }}" placeholder="0" style="{{ inputStyle }}" />
+              </label>
+            </sc-if>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:16px;">
+            <button onClick="{{ submitProductForm }}" style="{{ primaryBtnStyle }}">{{ productSubmitLabel }}</button>
+            <sc-if value="{{ isEditingProduct }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ cancelEditProduct }}" style="{{ ghostBtnStyle }}">Cancelar</button>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <thead>
+              <tr style="background:var(--color-surface); text-align:left;">
+                <th style="{{ thStyle }}">Nome</th>
+                <th style="{{ thStyle }}">Unid.</th>
+                <th style="{{ thStyle }}">NCM</th>
+                <th style="{{ thStyle }}">CEST</th>
+                <th style="{{ thStyle }}">Preço venda</th>
+                <th style="{{ thStyle }}">Custo atual</th>
+                <th style="{{ thStyle }}">Estoque</th>
+                <th style="{{ thStyle }}"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ productsView }}" as="p" hint-placeholder-count="3">
+                <tr style="border-top:1px solid var(--color-divider);">
+                  <td style="{{ tdStyle }}; font-weight:600; cursor:pointer;" onClick="{{ p.onExpand }}">{{ p.nome }}</td>
+                  <td style="{{ tdStyle }}">{{ p.unidade }}</td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums; font-size:13px;">{{ p.ncm }}</td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums; font-size:13px;">{{ p.cest }}</td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ p.precoVendaFmt }}</td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums; color:color-mix(in srgb, var(--color-text) 60%, transparent);">{{ p.custoAtualFmt }}</td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ p.estoque }} {{ p.unidade }}</td>
+                  <td style="{{ tdStyle }}; text-align:right; white-space:nowrap;">
+                    <button onClick="{{ p.onEdit }}" style="{{ smallBtnStyle }}">Editar</button>
+                    <button onClick="{{ p.onDelete }}" style="{{ smallDangerBtnStyle }}">Excluir</button>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+
+        <sc-if value="{{ hasExpandedProduct }}" hint-placeholder-val="{{ false }}">
+          <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:20px; margin-top:16px; max-width:720px;">
+            <div style="font-size:12px; font-weight:700; color:color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px;">Histórico de compras — {{ expandedProduct.nome }}</div>
+            <sc-if value="{{ expandedProduct.hasPurchases }}" hint-placeholder-val="{{ false }}">
+              <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px;">
+                <sc-for list="{{ expandedProduct.purchases }}" as="pu" hint-placeholder-count="2">
+                  <tr>
+                    <td style="padding:4px 8px 4px 0; color:color-mix(in srgb, var(--color-text) 60%, transparent);">{{ pu.data }}</td>
+                    <td style="padding:4px 8px;">{{ pu.local }}</td>
+                    <td style="padding:4px 8px; font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ pu.precoFmt }}</td>
+                    <td style="padding:4px 0; color:color-mix(in srgb, var(--color-text) 60%, transparent);">{{ pu.qtd }} {{ expandedProduct.unidade }}</td>
+                  </tr>
+                </sc-for>
+              </table>
+            </sc-if>
+            <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+              <label style="display:flex; flex-direction:column; gap:4px; font-size:11px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Mercado / fornecedor
+                <input value="{{ purchaseForm.local }}" onChange="{{ pfoLocal }}" placeholder="Ex: Atacadão" style="{{ inputStyleSm }}" />
+              </label>
+              <label style="display:flex; flex-direction:column; gap:4px; font-size:11px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Preço pago (R$)
+                <input type="number" step="0.01" value="{{ purchaseForm.preco }}" onChange="{{ pfoPreco }}" placeholder="0,00" style="{{ inputStyleSm }}" />
+              </label>
+              <label style="display:flex; flex-direction:column; gap:4px; font-size:11px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Quantidade comprada
+                <input type="number" step="1" value="{{ purchaseForm.qtd }}" onChange="{{ pfoQtd }}" placeholder="0" style="{{ inputStyleSm }}" />
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:12px; padding-bottom:6px;">
+                <input type="checkbox" checked="{{ purchaseForm.somar }}" onChange="{{ pfoSomar }}" />
+                Somar ao estoque
+              </label>
+              <button onClick="{{ expandedProduct.onSubmitPurchase }}" style="{{ primaryBtnStyleSm }}">Registrar compra</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isEstoque }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:32px; margin:0 0 8px; letter-spacing:-0.01em;">Estoque</h1>
+        <div style="color:color-mix(in srgb, var(--color-text) 60%, transparent); font-size:14px; margin-bottom:20px;">Valor total em estoque: <span style="font-family:var(--font-heading); font-variant-numeric:tabular-nums; font-weight:700; color:var(--color-text);">{{ totalEstoqueValorFmt }}</span></div>
+        <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden;">
+          <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <thead>
+              <tr style="background:var(--color-surface); text-align:left;">
+                <th style="{{ thStyle }}">Produto</th>
+                <th style="{{ thStyle }}">Custo unit.</th>
+                <th style="{{ thStyle }}">Quantidade</th>
+                <th style="{{ thStyle }}">Valor em estoque</th>
+                <th style="{{ thStyle }}"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ estoqueView }}" as="p" hint-placeholder-count="3">
+                <tr style="border-top:1px solid var(--color-divider);">
+                  <td style="{{ tdStyle }}; font-weight:600;">{{ p.nome }}</td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums; color:color-mix(in srgb, var(--color-text) 60%, transparent);">{{ p.custoAtualFmt }}</td>
+                  <td style="{{ tdStyle }}">
+                    <sc-if value="{{ p.isEditingStock }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; gap:6px; align-items:center;">
+                        <input type="number" value="{{ stockEditValue }}" onChange="{{ onStockEditChange }}" style="{{ inputStyleSm }}; width:80px;" />
+                        <button onClick="{{ confirmSetStock }}" style="{{ primaryBtnStyleSm }}">OK</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ p.isNotEditingStock }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; gap:8px; align-items:center;">
+                        <button onClick="{{ p.onDec }}" style="{{ stepBtnStyle }}">–</button>
+                        <span style="font-family:var(--font-heading); font-variant-numeric:tabular-nums; min-width:64px; display:inline-block;" onClick="{{ p.onStartEdit }}">{{ p.estoque }} {{ p.unidade }}</span>
+                        <button onClick="{{ p.onInc }}" style="{{ stepBtnStyle }}">+</button>
+                      </div>
+                    </sc-if>
+                  </td>
+                  <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ p.valorEstoqueFmt }}</td>
+                  <td style="{{ tdStyle }}">
+                    <sc-if value="{{ p.baixo }}" hint-placeholder-val="{{ false }}">
+                      <span style="color:var(--color-text); font-size:12px; font-weight:700;">estoque baixo</span>
+                    </sc-if>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCaixa }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:32px; margin:0 0 24px; letter-spacing:-0.01em;">Caixa</h1>
+        <div style="display:flex; gap:24px; align-items:flex-start;">
+          <div style="flex:1; min-width:0;">
+            <input value="{{ caixaSearch }}" onChange="{{ onCaixaSearch }}" placeholder="Buscar produto..." style="{{ inputStyle }}; margin-bottom:12px;" />
+            <div style="display:flex; flex-direction:column; gap:6px; max-height:520px; overflow-y:auto;">
+              <sc-for list="{{ caixaProdutos }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:10px 14px;">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">{{ p.nome }}</div>
+                    <div style="font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent); font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ p.precoVendaFmt }} · estoque: {{ p.estoque }} {{ p.unidade }}</div>
+                  </div>
+                  <button onClick="{{ p.onAdd }}" style="{{ primaryBtnStyleSm }}">Adicionar</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="width:340px; flex-shrink:0; background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:18px; position:sticky; top:0;">
+            <div style="font-size:13px; font-weight:700; color:color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:12px;">Venda atual</div>
+            <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="color:color-mix(in srgb, var(--color-text) 45%, transparent); font-size:13px;">Nenhum item adicionado.</div>
+            </sc-if>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+              <sc-for list="{{ cartView }}" as="c" hint-placeholder-count="1">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:13px; font-weight:600;">{{ c.nome }}</div>
+                    <div style="font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent); font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ c.subtotalFmt }}</div>
+                  </div>
+                  <button onClick="{{ c.onDec }}" style="{{ stepBtnStyle }}">–</button>
+                  <span style="font-family:var(--font-heading); font-variant-numeric:tabular-nums; min-width:20px; text-align:center; display:inline-block;">{{ c.qtd }}</span>
+                  <button onClick="{{ c.onInc }}" style="{{ stepBtnStyle }}">+</button>
+                  <button onClick="{{ c.onRemove }}" style="{{ smallDangerBtnStyle }}">x</button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:700; border-top:1px solid var(--color-divider); padding-top:12px; margin-bottom:16px;">
+              <span>Total</span><span style="font-family:var(--font-heading); font-variant-numeric:tabular-nums;">{{ cartTotalFmt }}</span>
+            </div>
+            <div style="font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent); margin-bottom:6px;">Forma de pagamento</div>
+            <div style="display:flex; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden; margin-bottom:16px;">
+              <button onClick="{{ setPagamentoPix }}" style="{{ pagBtnStylePix }}">Pix</button>
+              <button onClick="{{ setPagamentoDinheiro }}" style="{{ pagBtnStyleDinheiro }}">Dinheiro</button>
+              <button onClick="{{ setPagamentoCartao }}" style="{{ pagBtnStyleCartao }}; border-right:none;">Cartão</button>
+            </div>
+            <button onClick="{{ finalizeSale }}" style="{{ primaryBtnStyle }}; width:100%;">Finalizar venda</button>
+          </div>
+        </div>
+
+        <div style="margin-top:32px;">
+          <div style="font-size:13px; font-weight:700; color:color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px;">Hoje</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Vendido hoje</div><div style="{{ statValueStyle }}">{{ hojeTotalFmt }}</div></div>
+            <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Pix</div><div style="{{ statValueStyle }}">{{ hojePixFmt }}</div></div>
+            <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Dinheiro</div><div style="{{ statValueStyle }}">{{ hojeDinheiroFmt }}</div></div>
+            <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Cartão</div><div style="{{ statValueStyle }}">{{ hojeCartaoFmt }}</div></div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isFinanceiro }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:32px; margin:0 0 24px; letter-spacing:-0.01em;">Financeiro</h1>
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+          <button onClick="{{ setFinRecebimentos }}" style="{{ tabBtnStyleRecebimentos }}">Recebimentos</button>
+          <button onClick="{{ setFinGastos }}" style="{{ tabBtnStyleGastos }}">Gastos e dívidas</button>
+        </div>
+
+        <sc-if value="{{ isFinRecebimentos }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+              <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Total Pix</div><div style="{{ statValueStyle }}">{{ totalPixFmt }}</div></div>
+              <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Total Dinheiro</div><div style="{{ statValueStyle }}">{{ totalDinheiroFmt }}</div></div>
+              <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Total Cartão</div><div style="{{ statValueStyle }}">{{ totalCartaoFmt }}</div></div>
+            </div>
+            <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:18px; margin-bottom:20px; max-width:640px;">
+              <div style="font-size:13px; font-weight:700; color:color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:12px;">Anotar recebimento manual</div>
+              <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Tipo
+                  <select value="{{ manualPayForm.tipo }}" onChange="{{ mpTipo }}" style="{{ inputStyleSm }}">
+                    <option value="pix">Pix</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="cartao">Cartão</option>
+                  </select>
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Valor (R$)
+                  <input type="number" step="0.01" value="{{ manualPayForm.valor }}" onChange="{{ mpValor }}" placeholder="0,00" style="{{ inputStyleSm }}" />
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent); flex:1;">Observação
+                  <input value="{{ manualPayForm.obs }}" onChange="{{ mpObs }}" placeholder="Opcional" style="{{ inputStyleSm }}" />
+                </label>
+                <button onClick="{{ submitManualPayment }}" style="{{ primaryBtnStyleSm }}">Adicionar</button>
+              </div>
+            </div>
+            <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden;">
+              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                <thead>
+                  <tr style="background:var(--color-surface); text-align:left;">
+                    <th style="{{ thStyle }}">Data</th><th style="{{ thStyle }}">Origem</th><th style="{{ thStyle }}">Método</th><th style="{{ thStyle }}">Valor</th><th style="{{ thStyle }}">Obs.</th><th style="{{ thStyle }}"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ paymentsView }}" as="r" hint-placeholder-count="3">
+                    <tr style="border-top:1px solid var(--color-divider);">
+                      <td style="{{ tdStyle }}">{{ r.data }}</td>
+                      <td style="{{ tdStyle }}">{{ r.origem }}</td>
+                      <td style="{{ tdStyle }}">{{ r.metodoLabel }}</td>
+                      <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums; color:var(--color-accent-700); font-weight:600;">{{ r.valorFmt }}</td>
+                      <td style="{{ tdStyle }}; color:color-mix(in srgb, var(--color-text) 60%, transparent);">{{ r.obs }}</td>
+                      <td style="{{ tdStyle }}">
+                        <sc-if value="{{ r.isManual }}" hint-placeholder-val="{{ false }}">
+                          <button onClick="{{ r.onDelete }}" style="{{ smallDangerBtnStyle }}">Excluir</button>
+                        </sc-if>
+                      </td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isFinGastos }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+              <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Devendo — mercado</div><div style="{{ statValueStyleDanger }}">{{ devendoMercadoFmt }}</div></div>
+              <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Devendo — geral</div><div style="{{ statValueStyleDanger }}">{{ devendoGeralFmt }}</div></div>
+              <div style="{{ statCardStyle }}"><div style="{{ statLabelStyle }}">Já pago</div><div style="{{ statValueStyle }}">{{ totalPagoGastosFmt }}</div></div>
+            </div>
+            <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:18px; margin-bottom:20px; max-width:720px;">
+              <div style="font-size:13px; font-weight:700; color:color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:12px;">Anotar gasto / dívida</div>
+              <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Tipo
+                  <select value="{{ expenseForm.tipo }}" onChange="{{ efTipo }}" style="{{ inputStyleSm }}">
+                    <option value="mercado">Mercado / fornecedor</option>
+                    <option value="geral">Conta geral</option>
+                  </select>
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent); flex:1;">Descrição / fornecedor
+                  <input value="{{ expenseForm.descricao }}" onChange="{{ efDescricao }}" placeholder="Ex: Atacadão, aluguel..." style="{{ inputStyleSm }}" />
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent);">Valor (R$)
+                  <input type="number" step="0.01" value="{{ expenseForm.valor }}" onChange="{{ efValor }}" placeholder="0,00" style="{{ inputStyleSm }}" />
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; padding-bottom:6px;">
+                  <input type="checkbox" checked="{{ expenseForm.pago }}" onChange="{{ efPago }}" />
+                  Já pago
+                </label>
+                <button onClick="{{ submitExpense }}" style="{{ primaryBtnStyleSm }}">Adicionar</button>
+              </div>
+            </div>
+            <div style="background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); overflow:hidden;">
+              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                <thead>
+                  <tr style="background:var(--color-surface); text-align:left;">
+                    <th style="{{ thStyle }}">Data</th><th style="{{ thStyle }}">Tipo</th><th style="{{ thStyle }}">Descrição</th><th style="{{ thStyle }}">Valor</th><th style="{{ thStyle }}">Status</th><th style="{{ thStyle }}"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ expensesView }}" as="e" hint-placeholder-count="3">
+                    <tr style="border-top:1px solid var(--color-divider);">
+                      <td style="{{ tdStyle }}">{{ e.data }}</td>
+                      <td style="{{ tdStyle }}">{{ e.tipoLabel }}</td>
+                      <td style="{{ tdStyle }}">{{ e.descricao }}</td>
+                      <td style="{{ tdStyle }}; font-family:var(--font-heading); font-variant-numeric:tabular-nums; color:var(--color-text); font-weight:600;">{{ e.valorFmt }}</td>
+                      <td style="{{ tdStyle }}">
+                        <button onClick="{{ e.onTogglePaid }}" style="{{ e.statusBtnStyle }}">{{ e.statusLabel }}</button>
+                      </td>
+                      <td style="{{ tdStyle }}"><button onClick="{{ e.onDelete }}" style="{{ smallDangerBtnStyle }}">Excluir</button></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const STORAGE_KEY = 'estoque_app_v1';
+const UNIT_LABELS = { un:'un', kg:'kg', g:'g', l:'l', ml:'ml' };
+
+function fmtMoney(n) {
+  const v = Number(n) || 0;
+  return 'R$ ' + v.toFixed(2).replace('.', ',');
+}
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function emptyProductForm() {
+  return { nome: '', unidade: 'un', ncm: '', cest: '', precoVenda: '', custoInicial: '', estoqueInicial: '', editingId: null };
+}
+function emptyPurchaseForm() {
+  return { local: '', preco: '', qtd: '', somar: true };
+}
+function emptyManualPayForm() {
+  return { tipo: 'pix', valor: '', obs: '' };
+}
+function emptyExpenseForm() {
+  return { tipo: 'mercado', descricao: '', valor: '', pago: false };
+}
+
+class Component extends DCLogic {
+  state = {
+    view: 'produtos',
+    data: { products: [], purchases: [], sales: [], manualPagamentos: [], expenses: [] },
+    productForm: emptyProductForm(),
+    expandedProductId: null,
+    purchaseForm: emptyPurchaseForm(),
+    stockEditId: null,
+    stockEditValue: '',
+    cart: [],
+    caixaSearch: '',
+    pagamentoMetodo: 'pix',
+    finTab: 'recebimentos',
+    manualPayForm: emptyManualPayForm(),
+    expenseForm: emptyExpenseForm(),
+  };
+
+  componentDidMount() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        this.setState({ data: { products: [], purchases: [], sales: [], manualPagamentos: [], expenses: [], ...parsed } });
+      }
+    } catch (e) {}
+  }
+
+  setData = (updater) => {
+    this.setState((s) => {
+      const nd = updater(s.data);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nd)); } catch (e) {}
+      return { data: nd };
+    });
+  };
+
+  field = (formKey, key) => (e) => {
+    this.setState((s) => ({ [formKey]: { ...s[formKey], [key]: e.target.value } }));
+  };
+  fieldChecked = (formKey, key) => (e) => {
+    this.setState((s) => ({ [formKey]: { ...s[formKey], [key]: e.target.checked } }));
+  };
+
+  goProdutos = () => this.setState({ view: 'produtos' });
+  goEstoque = () => this.setState({ view: 'estoque' });
+  goCaixa = () => this.setState({ view: 'caixa' });
+  goFinanceiro = () => this.setState({ view: 'financeiro' });
+
+  submitProductForm = () => {
+    const f = this.state.productForm;
+    if (!f.nome.trim()) return;
+    if (f.editingId) {
+      this.setData((d) => ({
+        ...d,
+        products: d.products.map((p) => p.id === f.editingId ? {
+          ...p, nome: f.nome, unidade: f.unidade, ncm: f.ncm, cest: f.cest, precoVenda: Number(f.precoVenda) || 0,
+        } : p),
+      }));
+    } else {
+      const id = uid();
+      const custo = Number(f.custoInicial) || 0;
+      const estoque = Number(f.estoqueInicial) || 0;
+      const novo = { id, nome: f.nome, unidade: f.unidade, ncm: f.ncm, cest: f.cest, precoVenda: Number(f.precoVenda) || 0, custoAtual: custo, estoque };
+      this.setData((d) => ({
+        ...d,
+        products: [...d.products, novo],
+        purchases: custo > 0 ? [...d.purchases, { id: uid(), productId: id, data: todayStr(), local: 'Cadastro inicial', preco: custo, qtd: estoque }] : d.purchases,
+      }));
+    }
+    this.setState({ productForm: emptyProductForm() });
+  };
+
+  startEditProduct = (id) => {
+    const p = this.state.data.products.find((x) => x.id === id);
+    if (!p) return;
+    this.setState({ productForm: { nome: p.nome, unidade: p.unidade, ncm: p.ncm, cest: p.cest, precoVenda: String(p.precoVenda), custoInicial: '', estoqueInicial: '', editingId: id } });
+  };
+  cancelEditProduct = () => this.setState({ productForm: emptyProductForm() });
+
+  deleteProduct = (id) => {
+    if (!window.confirm('Excluir este produto?')) return;
+    this.setData((d) => ({ ...d, products: d.products.filter((p) => p.id !== id) }));
+  };
+
+  toggleExpand = (id) => {
+    this.setState((s) => ({ expandedProductId: s.expandedProductId === id ? null : id, purchaseForm: emptyPurchaseForm() }));
+  };
+
+  submitPurchase = (productId) => {
+    const f = this.state.purchaseForm;
+    const preco = Number(f.preco) || 0;
+    const qtd = Number(f.qtd) || 0;
+    if (preco <= 0) return;
+    this.setData((d) => ({
+      ...d,
+      products: d.products.map((p) => p.id === productId ? { ...p, custoAtual: preco, estoque: f.somar ? p.estoque + qtd : p.estoque } : p),
+      purchases: [...d.purchases, { id: uid(), productId, data: todayStr(), local: f.local || '—', preco, qtd }],
+    }));
+    this.setState({ purchaseForm: emptyPurchaseForm() });
+  };
+
+  adjustStock = (id, delta) => {
+    this.setData((d) => ({ ...d, products: d.products.map((p) => p.id === id ? { ...p, estoque: Math.max(0, p.estoque + delta) } : p) }));
+  };
+  startSetStock = (id, current) => this.setState({ stockEditId: id, stockEditValue: String(current) });
+  onStockEditChange = (e) => this.setState({ stockEditValue: e.target.value });
+  confirmSetStock = () => {
+    const id = this.state.stockEditId;
+    const val = Math.max(0, Number(this.state.stockEditValue) || 0);
+    this.setData((d) => ({ ...d, products: d.products.map((p) => p.id === id ? { ...p, estoque: val } : p) }));
+    this.setState({ stockEditId: null });
+  };
+
+  onCaixaSearch = (e) => this.setState({ caixaSearch: e.target.value });
+  addToCart = (productId) => {
+    this.setState((s) => {
+      const existing = s.cart.find((c) => c.productId === productId);
+      if (existing) return { cart: s.cart.map((c) => c.productId === productId ? { ...c, qtd: c.qtd + 1 } : c) };
+      return { cart: [...s.cart, { productId, qtd: 1 }] };
+    });
+  };
+  cartInc = (productId) => this.setState((s) => ({ cart: s.cart.map((c) => c.productId === productId ? { ...c, qtd: c.qtd + 1 } : c) }));
+  cartDec = (productId) => this.setState((s) => ({ cart: s.cart.map((c) => c.productId === productId ? { ...c, qtd: c.qtd - 1 } : c).filter((c) => c.qtd > 0) }));
+  cartRemove = (productId) => this.setState((s) => ({ cart: s.cart.filter((c) => c.productId !== productId) }));
+  setPagamento = (m) => this.setState({ pagamentoMetodo: m });
+
+  finalizeSale = () => {
+    const { cart, data } = this.state;
+    if (cart.length === 0) return;
+    const itens = cart.map((c) => {
+      const p = data.products.find((x) => x.id === c.productId);
+      return { productId: c.productId, nome: p ? p.nome : '?', qtd: c.qtd, precoVenda: p ? p.precoVenda : 0 };
+    });
+    const total = itens.reduce((sum, i) => sum + i.qtd * i.precoVenda, 0);
+    const venda = { id: uid(), data: todayStr(), itens, total, pagamento: this.state.pagamentoMetodo };
+    this.setData((d) => ({
+      ...d,
+      sales: [...d.sales, venda],
+      products: d.products.map((p) => {
+        const item = itens.find((i) => i.productId === p.id);
+        return item ? { ...p, estoque: Math.max(0, p.estoque - item.qtd) } : p;
+      }),
+    }));
+    this.setState({ cart: [] });
+  };
+
+  setFinTab = (t) => this.setState({ finTab: t });
+
+  submitManualPayment = () => {
+    const f = this.state.manualPayForm;
+    const valor = Number(f.valor) || 0;
+    if (valor <= 0) return;
+    this.setData((d) => ({ ...d, manualPagamentos: [...d.manualPagamentos, { id: uid(), data: todayStr(), tipo: f.tipo, valor, obs: f.obs }] }));
+    this.setState({ manualPayForm: emptyManualPayForm() });
+  };
+  deleteManualPayment = (id) => this.setData((d) => ({ ...d, manualPagamentos: d.manualPagamentos.filter((m) => m.id !== id) }));
+
+  submitExpense = () => {
+    const f = this.state.expenseForm;
+    const valor = Number(f.valor) || 0;
+    if (valor <= 0 || !f.descricao.trim()) return;
+    this.setData((d) => ({ ...d, expenses: [...d.expenses, { id: uid(), data: todayStr(), tipo: f.tipo, descricao: f.descricao, valor, pago: f.pago }] }));
+    this.setState({ expenseForm: emptyExpenseForm() });
+  };
+  toggleExpensePaid = (id) => this.setData((d) => ({ ...d, expenses: d.expenses.map((e) => e.id === id ? { ...e, pago: !e.pago } : e) }));
+  deleteExpense = (id) => this.setData((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) }));
+
+  renderVals() {
+    const s = this.state;
+    const d = s.data;
+    const today = todayStr();
+
+    const navBase = { display: 'block', textAlign: 'left', width: '100%', padding: '8px 4px', borderRadius: '0', border: 'none', borderBottom: '1px solid transparent', background: 'transparent', fontFamily: 'var(--font-heading)', fontWeight: 'var(--font-heading-weight)', fontSize: '15px', cursor: 'pointer', color: 'var(--color-text)' };
+    const navActive = { ...navBase, color: 'var(--color-accent)' };
+    const navStyleStr = (obj) => Object.entries(obj).map(([k, v]) => `${k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}:${v}`).join(';');
+
+    const inputStyle = 'width:100%; box-sizing:border-box; min-height:36px; padding:6px 10px; border:1px solid var(--color-divider); border-radius:var(--radius-md); font-size:14px; color:inherit; background:transparent;';
+    const inputStyleSm = 'min-height:32px; padding:5px 9px; border:1px solid var(--color-divider); border-radius:var(--radius-md); font-size:13px; color:inherit; background:transparent;';
+    const primaryBtnStyle = 'padding:8px 19px; border:1px solid var(--color-accent); border-radius:var(--radius-md); background:transparent; color:var(--color-accent); font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:14px; cursor:pointer;';
+    const primaryBtnStyleSm = 'padding:6px 14px; border:1px solid var(--color-accent); border-radius:var(--radius-md); background:transparent; color:var(--color-accent); font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:13px; cursor:pointer; white-space:nowrap;';
+    const ghostBtnStyle = 'padding:8px 19px; border:1px solid var(--color-divider); border-radius:var(--radius-md); background:transparent; color:var(--color-text); font-family:var(--font-heading); font-weight:var(--font-heading-weight); font-size:14px; cursor:pointer;';
+    const smallBtnStyle = 'padding:4px 10px; border:1px solid var(--color-divider); border-radius:var(--radius-sm); background:transparent; color:var(--color-text); font-size:12px; cursor:pointer; margin-right:6px;';
+    const smallDangerBtnStyle = 'padding:4px 10px; border:1px solid var(--color-divider); border-radius:var(--radius-sm); background:transparent; color:color-mix(in srgb, var(--color-text) 70%, transparent); font-size:12px; cursor:pointer;';
+    const stepBtnStyle = 'width:26px; height:26px; border:1px solid var(--color-divider); border-radius:var(--radius-sm); background:transparent; color:var(--color-text); font-size:14px; cursor:pointer; line-height:1;';
+    const thStyle = 'padding:10px 14px; font-size:12px; font-weight:700; color:color-mix(in srgb, var(--color-text) 60%, transparent); text-transform:uppercase; letter-spacing:0.03em;';
+    const tdStyle = 'padding:10px 14px;';
+    const statCardStyle = 'background:transparent; border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:14px 18px; min-width:140px;';
+    const statLabelStyle = 'font-size:12px; color:color-mix(in srgb, var(--color-text) 60%, transparent); margin-bottom:6px;';
+    const statValueStyle = 'font-size:22px; font-weight:var(--font-heading-weight); font-family:var(--font-heading); font-variant-numeric:tabular-nums; color:var(--color-accent-700);';
+    const statValueStyleDanger = 'font-size:22px; font-weight:var(--font-heading-weight); font-family:var(--font-heading); font-variant-numeric:tabular-nums; color:var(--color-text);';
+
+    const pagBtn = (active) => `flex:1; padding:8px; border:none; border-right:1px solid var(--color-divider); background:transparent; color:${active ? 'var(--color-accent)' : 'var(--color-text)'}; box-shadow:${active ? 'inset 0 0 0 1px var(--color-accent)' : 'none'}; font-size:13px; font-family:var(--font-heading); font-weight:var(--font-heading-weight); cursor:pointer;`;
+    const tabBtn = (active) => `padding:8px 16px; border-radius:var(--radius-md); border:1px solid ${active ? 'var(--color-accent)' : 'var(--color-divider)'}; background:transparent; color:${active ? 'var(--color-accent)' : 'var(--color-text)'}; font-size:13px; font-family:var(--font-heading); font-weight:var(--font-heading-weight); cursor:pointer;`;
+
+    const productsView = d.products.map((p) => {
+      const isExpanded = s.expandedProductId === p.id;
+      const purchases = d.purchases.filter((pu) => pu.productId === p.id).slice().reverse();
+      return {
+        ...p,
+        precoVendaFmt: fmtMoney(p.precoVenda),
+        custoAtualFmt: fmtMoney(p.custoAtual),
+        isExpanded,
+        hasPurchases: purchases.length > 0,
+        purchases: purchases.map((pu) => ({ ...pu, precoFmt: fmtMoney(pu.preco) })),
+        onEdit: () => this.startEditProduct(p.id),
+        onDelete: () => this.deleteProduct(p.id),
+        onExpand: () => this.toggleExpand(p.id),
+        onSubmitPurchase: () => this.submitPurchase(p.id),
+      };
+    });
+
+    const estoqueView = d.products.map((p) => {
+      const isEditingStock = s.stockEditId === p.id;
+      return {
+        ...p,
+        custoAtualFmt: fmtMoney(p.custoAtual),
+        valorEstoqueFmt: fmtMoney(p.estoque * p.custoAtual),
+        baixo: p.estoque <= 3,
+        isEditingStock,
+        isNotEditingStock: !isEditingStock,
+        onInc: () => this.adjustStock(p.id, 1),
+        onDec: () => this.adjustStock(p.id, -1),
+        onStartEdit: () => this.startSetStock(p.id, p.estoque),
+      };
+    });
+    const totalEstoqueValorFmt = fmtMoney(d.products.reduce((sum, p) => sum + p.estoque * p.custoAtual, 0));
+
+    const caixaProdutos = d.products
+      .filter((p) => p.nome.toLowerCase().includes(s.caixaSearch.toLowerCase()))
+      .map((p) => ({ ...p, precoVendaFmt: fmtMoney(p.precoVenda), onAdd: () => this.addToCart(p.id) }));
+
+    const cartView = s.cart.map((c) => {
+      const p = d.products.find((x) => x.id === c.productId);
+      const nome = p ? p.nome : '?';
+      const preco = p ? p.precoVenda : 0;
+      return { productId: c.productId, nome, qtd: c.qtd, subtotalFmt: fmtMoney(preco * c.qtd), onInc: () => this.cartInc(c.productId), onDec: () => this.cartDec(c.productId), onRemove: () => this.cartRemove(c.productId) };
+    });
+    const cartTotal = s.cart.reduce((sum, c) => {
+      const p = d.products.find((x) => x.id === c.productId);
+      return sum + (p ? p.precoVenda : 0) * c.qtd;
+    }, 0);
+
+    const vendasHoje = d.sales.filter((v) => v.data === today);
+    const byMetodoHoje = (m) => vendasHoje.filter((v) => v.pagamento === m).reduce((sum, v) => sum + v.total, 0);
+    const hojeTotal = vendasHoje.reduce((sum, v) => sum + v.total, 0);
+
+    const paymentsRaw = [
+      ...d.sales.map((v) => ({ id: v.id, data: v.data, origem: 'Venda', metodo: v.pagamento, valor: v.total, obs: '', isManual: false })),
+      ...d.manualPagamentos.map((m) => ({ id: m.id, data: m.data, origem: 'Manual', metodo: m.tipo, valor: m.valor, obs: m.obs, isManual: true })),
+    ].sort((a, b) => (a.data < b.data ? 1 : -1));
+    const metodoLabels = { pix: 'Pix', dinheiro: 'Dinheiro', cartao: 'Cartão' };
+    const paymentsView = paymentsRaw.map((r) => ({ ...r, metodoLabel: metodoLabels[r.metodo] || r.metodo, valorFmt: fmtMoney(r.valor), onDelete: () => this.deleteManualPayment(r.id) }));
+
+    const totalByMetodo = (m) => d.sales.filter((v) => v.pagamento === m).reduce((sum, v) => sum + v.total, 0) + d.manualPagamentos.filter((p) => p.tipo === m).reduce((sum, p) => sum + p.valor, 0);
+
+    const tipoLabels = { mercado: 'Mercado', geral: 'Conta geral' };
+    const expensesView = d.expenses.slice().reverse().map((e) => ({
+      ...e,
+      tipoLabel: tipoLabels[e.tipo] || e.tipo,
+      valorFmt: fmtMoney(e.valor),
+      statusLabel: e.pago ? 'Pago' : 'Devendo',
+      statusBtnStyle: e.pago ? 'padding:5px 10px; border-radius:var(--radius-sm); border:1px solid var(--color-accent-200); background:var(--color-accent-100); color:var(--color-accent-800); font-size:12px; cursor:pointer;' : 'padding:5px 10px; border-radius:var(--radius-sm); border:1px solid var(--color-divider); background:var(--color-neutral-100); color:var(--color-text); font-size:12px; cursor:pointer;',
+      onTogglePaid: () => this.toggleExpensePaid(e.id),
+      onDelete: () => this.deleteExpense(e.id),
+    }));
+    const devendoMercado = d.expenses.filter((e) => e.tipo === 'mercado' && !e.pago).reduce((sum, e) => sum + e.valor, 0);
+    const devendoGeral = d.expenses.filter((e) => e.tipo === 'geral' && !e.pago).reduce((sum, e) => sum + e.valor, 0);
+    const totalPagoGastos = d.expenses.filter((e) => e.pago).reduce((sum, e) => sum + e.valor, 0);
+
+    return {
+      isProdutos: s.view === 'produtos', isEstoque: s.view === 'estoque', isCaixa: s.view === 'caixa', isFinanceiro: s.view === 'financeiro',
+      goProdutos: this.goProdutos, goEstoque: this.goEstoque, goCaixa: this.goCaixa, goFinanceiro: this.goFinanceiro,
+      navBtnStyleProdutos: navStyleStr(s.view === 'produtos' ? navActive : navBase),
+      navBtnStyleEstoque: navStyleStr(s.view === 'estoque' ? navActive : navBase),
+      navBtnStyleCaixa: navStyleStr(s.view === 'caixa' ? navActive : navBase),
+      navBtnStyleFinanceiro: navStyleStr(s.view === 'financeiro' ? navActive : navBase),
+      inputStyle, inputStyleSm, primaryBtnStyle, primaryBtnStyleSm, ghostBtnStyle, smallBtnStyle, smallDangerBtnStyle, stepBtnStyle, thStyle, tdStyle, statCardStyle, statLabelStyle, statValueStyle, statValueStyleDanger,
+
+      productForm: s.productForm,
+      isCreatingProduct: !s.productForm.editingId,
+      isEditingProduct: !!s.productForm.editingId,
+      productFormTitle: s.productForm.editingId ? 'Editar produto' : 'Cadastrar novo produto',
+      productSubmitLabel: s.productForm.editingId ? 'Salvar alterações' : 'Cadastrar produto',
+      pfNome: this.field('productForm', 'nome'), pfUnidade: this.field('productForm', 'unidade'), pfNcm: this.field('productForm', 'ncm'), pfCest: this.field('productForm', 'cest'),
+      pfPrecoVenda: this.field('productForm', 'precoVenda'), pfCustoInicial: this.field('productForm', 'custoInicial'), pfEstoqueInicial: this.field('productForm', 'estoqueInicial'),
+      submitProductForm: this.submitProductForm, cancelEditProduct: this.cancelEditProduct,
+      productsView,
+      hasExpandedProduct: !!s.expandedProductId,
+      expandedProduct: productsView.find((p) => p.id === s.expandedProductId) || { nome: '', hasPurchases: false, purchases: [], unidade: '', onSubmitPurchase: () => {} },
+
+      purchaseForm: s.purchaseForm,
+      pfoLocal: this.field('purchaseForm', 'local'), pfoPreco: this.field('purchaseForm', 'preco'), pfoQtd: this.field('purchaseForm', 'qtd'), pfoSomar: this.fieldChecked('purchaseForm', 'somar'),
+
+      estoqueView, totalEstoqueValorFmt,
+      stockEditValue: s.stockEditValue, onStockEditChange: this.onStockEditChange, confirmSetStock: this.confirmSetStock,
+
+      caixaSearch: s.caixaSearch, onCaixaSearch: this.onCaixaSearch, caixaProdutos,
+      cartView, cartEmpty: s.cart.length === 0, cartTotalFmt: fmtMoney(cartTotal),
+      setPagamentoPix: () => this.setPagamento('pix'), setPagamentoDinheiro: () => this.setPagamento('dinheiro'), setPagamentoCartao: () => this.setPagamento('cartao'),
+      pagBtnStylePix: pagBtn(s.pagamentoMetodo === 'pix'), pagBtnStyleDinheiro: pagBtn(s.pagamentoMetodo === 'dinheiro'), pagBtnStyleCartao: pagBtn(s.pagamentoMetodo === 'cartao'),
+      finalizeSale: this.finalizeSale,
+      hojeTotalFmt: fmtMoney(hojeTotal), hojePixFmt: fmtMoney(byMetodoHoje('pix')), hojeDinheiroFmt: fmtMoney(byMetodoHoje('dinheiro')), hojeCartaoFmt: fmtMoney(byMetodoHoje('cartao')),
+
+      isFinRecebimentos: s.finTab === 'recebimentos', isFinGastos: s.finTab === 'gastos',
+      setFinRecebimentos: () => this.setFinTab('recebimentos'), setFinGastos: () => this.setFinTab('gastos'),
+      tabBtnStyleRecebimentos: tabBtn(s.finTab === 'recebimentos'), tabBtnStyleGastos: tabBtn(s.finTab === 'gastos'),
+      totalPixFmt: fmtMoney(totalByMetodo('pix')), totalDinheiroFmt: fmtMoney(totalByMetodo('dinheiro')), totalCartaoFmt: fmtMoney(totalByMetodo('cartao')),
+      manualPayForm: s.manualPayForm, mpTipo: this.field('manualPayForm', 'tipo'), mpValor: this.field('manualPayForm', 'valor'), mpObs: this.field('manualPayForm', 'obs'), submitManualPayment: this.submitManualPayment,
+      paymentsView,
+
+      expenseForm: s.expenseForm, efTipo: this.field('expenseForm', 'tipo'), efDescricao: this.field('expenseForm', 'descricao'), efValor: this.field('expenseForm', 'valor'), efPago: this.fieldChecked('expenseForm', 'pago'), submitExpense: this.submitExpense,
+      expensesView, devendoMercadoFmt: fmtMoney(devendoMercado), devendoGeralFmt: fmtMoney(devendoGeral), totalPagoGastosFmt: fmtMoney(totalPagoGastos),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
