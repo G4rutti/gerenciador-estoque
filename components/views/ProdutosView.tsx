@@ -2,6 +2,7 @@
 
 import { InventoryStore } from "@/lib/useInventoryStore";
 import { fmtMoney } from "@/lib/format";
+import { lookupCestByNcm } from "@/lib/ncmCestMap";
 import { ProductForm, VariationForm } from "@/lib/types";
 import { useState } from "react";
 
@@ -70,10 +71,24 @@ export function ProdutosView({ store }: { store: InventoryStore }) {
           </label>
           <label className="field-label">
             NCM
-            <input className="input" value={productForm.ncm} onChange={field<ProductForm>(setProductForm, "ncm")} placeholder="0000.00.00" />
+            <input
+              className="input"
+              value={productForm.ncm}
+              onChange={(e) => {
+                const ncm = e.target.value;
+                setProductForm((f) => {
+                  const cest = lookupCestByNcm(ncm);
+                  return { ...f, ncm, ...(cest ? { cest } : {}) };
+                });
+              }}
+              placeholder="0000.00.00"
+            />
           </label>
           <label className="field-label">
             CEST
+            {productForm.cest && lookupCestByNcm(productForm.ncm) === productForm.cest && (
+              <span style={{ fontSize: 10, color: "var(--color-success, #22c55e)", marginLeft: 6, fontWeight: 500 }}>● auto</span>
+            )}
             <input className="input" value={productForm.cest} onChange={field<ProductForm>(setProductForm, "cest")} placeholder="00.000.00" />
           </label>
           {!isEditingProduct && (
