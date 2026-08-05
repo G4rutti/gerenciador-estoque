@@ -1,5 +1,16 @@
 export type Unidade = "un" | "kg" | "g" | "l" | "ml";
 
+export type ProductVariation = {
+  id: string;
+  productId: string;
+  nome: string;
+  codigo: string;
+  precoVenda: number | null; // null = usa preço do produto-pai
+  estoque: number;
+  ativo: boolean;
+  ordem: number;
+};
+
 export type Product = {
   id: string;
   nome: string;
@@ -9,6 +20,8 @@ export type Product = {
   precoVenda: number;
   custoAtual: number;
   estoque: number;
+  variationGroupName: string;
+  variations: ProductVariation[];
 };
 
 export type Purchase = {
@@ -78,6 +91,13 @@ export type ProductForm = {
   editingId: string | null;
 };
 
+export type VariationForm = {
+  nome: string;
+  codigo: string;
+  precoVenda: string;
+  estoqueInicial: string;
+};
+
 export type PurchaseForm = {
   local: string;
   preco: string;
@@ -143,4 +163,11 @@ export const emptyExpenseForm = (): ExpenseForm => ({
   descricao: "",
   valor: "",
   pago: false,
+});
+
+export const emptyVariationForm = (): VariationForm => ({
+  nome: "",
+  codigo: "",
+  precoVenda: "",
+  estoqueInicial: "0",
 });

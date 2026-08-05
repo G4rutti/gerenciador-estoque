@@ -18,7 +18,13 @@ export function CaixaView({ store }: { store: InventoryStore }) {
 
   const cartTotal = cart.reduce((sum, c) => {
     const p = data.products.find((x) => x.id === c.productId);
-    return sum + (p ? p.precoVenda : 0) * c.qtd;
+    if (!p) return sum;
+    if (c.variationId) {
+      const v = p.variations.find((v) => v.id === c.variationId);
+      const preco = v?.precoVenda != null ? v.precoVenda : p.precoVenda;
+      return sum + preco * c.qtd;
+    }
+    return sum + p.precoVenda * c.qtd;
   }, 0);
 
   const vendasHoje = data.sales.filter((v) => v.data === today);
@@ -38,19 +44,60 @@ export function CaixaView({ store }: { store: InventoryStore }) {
             placeholder="Buscar produto..."
           />
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 520, overflowY: "auto" }}>
-            {caixaProdutos.map((p) => (
-              <div key={p.id} className="panel" style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{p.nome}</div>
-                  <div className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>
-                    {fmtMoney(p.precoVenda)} · estoque: {p.estoque} {p.unidade}
+            {caixaProdutos.map((p) => {
+              const hasVariations = p.variations.length > 0;
+              const isPickerOpen = store.variationPickerProductId === p.id;
+              const totalEstoque = hasVariations
+                ? p.variations.reduce((sum, v) => sum + v.estoque, 0)
+                : p.estoque;
+
+              return (
+                <div key={p.id}>
+                  <div className="panel" style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>
+                        {p.nome}
+                        {hasVariations && (
+                          <span className="variation-badge" style={{ marginLeft: 8 }}>
+                            {p.variations.length} {p.variationGroupName || "var."}
+                          </span>
+                        )}
+                      </div>
+                      <div className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>
+                        {fmtMoney(p.precoVenda)} · estoque: {totalEstoque} {p.unidade}
+                      </div>
+                    </div>
+                    <button className="btn-primary-sm" onClick={() => store.handleAddToCart(p.id)}>
+                      {hasVariations ? (isPickerOpen ? "Fechar" : "Escolher") : "Adicionar"}
+                    </button>
                   </div>
+                  {/* Variation picker dropdown */}
+                  {hasVariations && isPickerOpen && (
+                    <div className="variation-picker">
+                      {p.variations
+                        .filter((v) => v.ativo)
+                        .map((v) => (
+                          <div
+                            key={v.id}
+                            className="variation-picker-item"
+                            onClick={() => store.addToCart(p.id, v.id)}
+                          >
+                            <div>
+                              <span style={{ fontWeight: 600, fontSize: 13 }}>{v.nome}</span>
+                              <span className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)", marginLeft: 8 }}>
+                                {v.precoVenda != null ? fmtMoney(v.precoVenda) : fmtMoney(p.precoVenda)}
+                              </span>
+                            </div>
+                            <span className="num" style={{ fontSize: 11, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>
+                              estoque: {v.estoque}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
-                <button className="btn-primary-sm" onClick={() => store.addToCart(p.id)}>
-                  Adicionar
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -62,26 +109,35 @@ export function CaixaView({ store }: { store: InventoryStore }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
             {cart.map((c) => {
               const p = data.products.find((x) => x.id === c.productId);
-              const nome = p ? p.nome : "?";
-              const preco = p ? p.precoVenda : 0;
+              let nome = p ? p.nome : "?";
+              let preco = p ? p.precoVenda : 0;
+
+              if (c.variationId && p) {
+                const v = p.variations.find((v) => v.id === c.variationId);
+                if (v) {
+                  nome = `${p.nome} — ${v.nome}`;
+                  if (v.precoVenda != null) preco = v.precoVenda;
+                }
+              }
+
               return (
-                <div key={c.productId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div key={`${c.productId}-${c.variationId}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{nome}</div>
                     <div className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>
                       {fmtMoney(preco * c.qtd)}
                     </div>
                   </div>
-                  <button className="btn-step" onClick={() => store.cartDec(c.productId)}>
+                  <button className="btn-step" onClick={() => store.cartDec(c.productId, c.variationId)}>
                     –
                   </button>
                   <span className="num" style={{ minWidth: 20, textAlign: "center", display: "inline-block" }}>
                     {c.qtd}
                   </span>
-                  <button className="btn-step" onClick={() => store.cartInc(c.productId)}>
+                  <button className="btn-step" onClick={() => store.cartInc(c.productId, c.variationId)}>
                     +
                   </button>
-                  <button className="btn-small-danger" onClick={() => store.cartRemove(c.productId)}>
+                  <button className="btn-small-danger" onClick={() => store.cartRemove(c.productId, c.variationId)}>
                     x
                   </button>
                 </div>

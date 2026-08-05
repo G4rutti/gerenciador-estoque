@@ -1,4 +1,4 @@
-import { Expense, ManualPayment, Product, Purchase, Sale } from "../types";
+import { Expense, ManualPayment, Product, ProductVariation, Purchase, Sale } from "../types";
 
 export type ProductRow = {
   id: string;
@@ -9,6 +9,18 @@ export type ProductRow = {
   preco_venda: number;
   custo_atual: number;
   estoque: number;
+  variation_group_name?: string;
+};
+
+export type VariationRow = {
+  id: string;
+  product_id: string;
+  nome: string;
+  codigo: string;
+  preco_venda: number | null;
+  estoque: number;
+  ativo: boolean;
+  ordem: number;
 };
 
 export type PurchaseRow = {
@@ -54,6 +66,19 @@ export const productFromRow = (r: ProductRow): Product => ({
   precoVenda: Number(r.preco_venda),
   custoAtual: Number(r.custo_atual),
   estoque: Number(r.estoque),
+  variationGroupName: r.variation_group_name ?? "",
+  variations: [],
+});
+
+export const variationFromRow = (r: VariationRow): ProductVariation => ({
+  id: r.id,
+  productId: r.product_id,
+  nome: r.nome,
+  codigo: r.codigo ?? "",
+  precoVenda: r.preco_venda != null ? Number(r.preco_venda) : null,
+  estoque: Number(r.estoque),
+  ativo: r.ativo,
+  ordem: r.ordem ?? 0,
 });
 
 export const purchaseFromRow = (r: PurchaseRow): Purchase => ({
