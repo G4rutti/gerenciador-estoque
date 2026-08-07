@@ -4,7 +4,13 @@ import { InventoryStore } from "@/lib/useInventoryStore";
 import { fmtMoney } from "@/lib/format";
 import { ExpenseForm, ManualPayForm, PagamentoMetodo } from "@/lib/types";
 
-const METODO_LABELS: Record<PagamentoMetodo, string> = { pix: "Pix", dinheiro: "Dinheiro", cartao: "Cartão" };
+const METODO_LABELS: Record<PagamentoMetodo, string> = {
+  pix: "Pix",
+  dinheiro: "Dinheiro",
+  cartao: "Cartão",
+  cartao_credito: "Cartão de Crédito",
+  cartao_debito: "Cartão de Débito",
+};
 const TIPO_LABELS: Record<string, string> = { mercado: "Mercado", geral: "Conta geral" };
 
 export function FinanceiroView({ store }: { store: InventoryStore }) {
@@ -48,8 +54,12 @@ export function FinanceiroView({ store }: { store: InventoryStore }) {
               <div className="stat-value">{fmtMoney(totalByMetodo("dinheiro"))}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Total Cartão</div>
-              <div className="stat-value">{fmtMoney(totalByMetodo("cartao"))}</div>
+              <div className="stat-label">Total Crédito</div>
+              <div className="stat-value">{fmtMoney(totalByMetodo("cartao_credito"))}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Total Débito</div>
+              <div className="stat-value">{fmtMoney(totalByMetodo("cartao_debito"))}</div>
             </div>
           </div>
 
@@ -61,7 +71,8 @@ export function FinanceiroView({ store }: { store: InventoryStore }) {
                 <select className="input-sm" value={manualPayForm.tipo} onChange={field<ManualPayForm>(setManualPayForm, "tipo")}>
                   <option value="pix">Pix</option>
                   <option value="dinheiro">Dinheiro</option>
-                  <option value="cartao">Cartão</option>
+                  <option value="cartao_credito">Cartão de Crédito</option>
+                  <option value="cartao_debito">Cartão de Débito</option>
                 </select>
               </label>
               <label className="field-label-sm">

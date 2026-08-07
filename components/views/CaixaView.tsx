@@ -7,7 +7,8 @@ import { PagamentoMetodo } from "@/lib/types";
 const PAG_OPTIONS: { key: PagamentoMetodo; label: string }[] = [
   { key: "pix", label: "Pix" },
   { key: "dinheiro", label: "Dinheiro" },
-  { key: "cartao", label: "Cartão" },
+  { key: "cartao_credito", label: "Crédito" },
+  { key: "cartao_debito", label: "Débito" },
 ];
 
 export function CaixaView({ store }: { store: InventoryStore }) {
@@ -192,8 +193,12 @@ export function CaixaView({ store }: { store: InventoryStore }) {
             <div className="stat-value">{fmtMoney(byMetodoHoje("dinheiro"))}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Cartão</div>
-            <div className="stat-value">{fmtMoney(byMetodoHoje("cartao"))}</div>
+            <div className="stat-label">Crédito</div>
+            <div className="stat-value">{fmtMoney(byMetodoHoje("cartao_credito"))}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Débito</div>
+            <div className="stat-value">{fmtMoney(byMetodoHoje("cartao_debito"))}</div>
           </div>
         </div>
       </div>

@@ -33,7 +33,23 @@ export type Purchase = {
   qtd: number;
 };
 
-export type PagamentoMetodo = "pix" | "dinheiro" | "cartao";
+export type PagamentoMetodo = "pix" | "dinheiro" | "cartao" | "cartao_credito" | "cartao_debito";
+
+export type RecipeItem = {
+  id: string;
+  recipeId: string;
+  productId: string;
+  variationId?: string | null;
+  qtd: number;
+};
+
+export type Recipe = {
+  id: string;
+  nome: string;
+  descricao: string;
+  rendimento: string;
+  itens: RecipeItem[];
+};
 
 export type SaleItem = {
   productId: string;
@@ -75,9 +91,10 @@ export type AppData = {
   sales: Sale[];
   manualPagamentos: ManualPayment[];
   expenses: Expense[];
+  recipes: Recipe[];
 };
 
-export type View = "produtos" | "estoque" | "caixa" | "financeiro";
+export type View = "produtos" | "estoque" | "caixa" | "financeiro" | "receitas";
 export type FinTab = "recebimentos" | "gastos";
 
 export type ProductForm = {
@@ -118,6 +135,18 @@ export type ExpenseForm = {
   pago: boolean;
 };
 
+export type RecipeForm = {
+  nome: string;
+  descricao: string;
+  rendimento: string;
+};
+
+export type RecipeItemForm = {
+  productId: string;
+  variationId: string;
+  qtd: string;
+};
+
 export const UNIT_LABELS: Record<Unidade, string> = {
   un: "un",
   kg: "kg",
@@ -132,6 +161,7 @@ export const emptyAppData = (): AppData => ({
   sales: [],
   manualPagamentos: [],
   expenses: [],
+  recipes: [],
 });
 
 export const emptyProductForm = (): ProductForm => ({
@@ -170,4 +200,16 @@ export const emptyVariationForm = (): VariationForm => ({
   codigo: "",
   precoVenda: "",
   estoqueInicial: "0",
+});
+
+export const emptyRecipeForm = (): RecipeForm => ({
+  nome: "",
+  descricao: "",
+  rendimento: "",
+});
+
+export const emptyRecipeItemForm = (): RecipeItemForm => ({
+  productId: "",
+  variationId: "",
+  qtd: "1",
 });

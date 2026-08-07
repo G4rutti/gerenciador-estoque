@@ -8,6 +8,8 @@ import {
   manualPaymentFromRow,
   productFromRow,
   purchaseFromRow,
+  recipeFromRow,
+  recipeItemFromRow,
   saleFromRow,
   variationFromRow,
 } from "./supabase/mappers";
@@ -23,6 +25,10 @@ import {
   ProductForm,
   ProductVariation,
   PurchaseForm,
+  Recipe,
+  RecipeForm,
+  RecipeItem,
+  RecipeItemForm,
   VariationForm,
   View,
   emptyAppData,
@@ -30,6 +36,8 @@ import {
   emptyManualPayForm,
   emptyProductForm,
   emptyPurchaseForm,
+  emptyRecipeForm,
+  emptyRecipeItemForm,
   emptyVariationForm,
 } from "./types";
 
@@ -39,6 +47,7 @@ export function useInventoryStore() {
   const [view, setView] = useState<View>("produtos");
   const [data, setDataRaw] = useState<AppData>(emptyAppData());
   const [loading, setLoading] = useState(true);
+  const [productSearch, setProductSearch] = useState("");
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm());
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [purchaseForm, setPurchaseForm] = useState<PurchaseForm>(emptyPurchaseForm());
@@ -51,6 +60,11 @@ export function useInventoryStore() {
   const [manualPayForm, setManualPayForm] = useState<ManualPayForm>(emptyManualPayForm());
   const [expenseForm, setExpenseForm] = useState<ExpenseForm>(emptyExpenseForm());
 
+  // Recipe state
+  const [recipeForm, setRecipeForm] = useState<RecipeForm>(emptyRecipeForm());
+  const [recipeItemForm, setRecipeItemForm] = useState<RecipeItemForm>(emptyRecipeItemForm());
+  const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
+
   // Variation-specific state
   const [variationForm, setVariationForm] = useState<VariationForm>(emptyVariationForm());
   const [stockEditVariationId, setStockEditVariationId] = useState<string | null>(null);
@@ -60,18 +74,20 @@ export function useInventoryStore() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [products, purchases, sales, manualPagamentos, expenses, variations] = await Promise.all([
+      const [products, purchases, sales, manualPagamentos, expenses, variations, recipesRes, recipeItemsRes] = await Promise.all([
         supabase.from("products").select("*").order("created_at"),
         supabase.from("purchases").select("*").order("created_at"),
         supabase.from("sales").select("*").order("created_at"),
         supabase.from("manual_pagamentos").select("*").order("created_at"),
         supabase.from("expenses").select("*").order("created_at"),
         supabase.from("product_variations").select("*").order("ordem"),
+        supabase.from("recipes").select("*").order("created_at"),
+        supabase.from("recipe_items").select("*").order("created_at"),
       ]);
       if (cancelled) return;
 
-      const productList = (products.data ?? []).map(productFromRow);
-      const variationList = (variations.data ?? []).map(variationFromRow);
+      const productList = (products.data ?? []).map((p: any) => productFromRow(p));
+      const variationList = (variations.data ?? []).map((v: any) => variationFromRow(v));
 
       // Attach variations to their products
       const variationsByProduct = new Map<string, ProductVariation[]>();
@@ -85,12 +101,29 @@ export function useInventoryStore() {
         variations: variationsByProduct.get(p.id) ?? [],
       }));
 
+      // Assemble recipes with items
+      const recipeList = (recipesRes.data ?? []).map((r: any) => recipeFromRow(r));
+      const recipeItemList = (recipeItemsRes.data ?? []).map((item: any) => recipeItemFromRow(item));
+
+      const itemsByRecipe = new Map<string, RecipeItem[]>();
+      recipeItemList.forEach((item) => {
+        const list = itemsByRecipe.get(item.recipeId) ?? [];
+        list.push(item);
+        itemsByRecipe.set(item.recipeId, list);
+      });
+
+      const recipesWithItems = recipeList.map((r: any) => ({
+        ...r,
+        itens: itemsByRecipe.get(r.id) ?? [],
+      }));
+
       setDataRaw({
         products: productsWithVariations,
         purchases: (purchases.data ?? []).map(purchaseFromRow),
         sales: (sales.data ?? []).map(saleFromRow),
         manualPagamentos: (manualPagamentos.data ?? []).map(manualPaymentFromRow),
         expenses: (expenses.data ?? []).map(expenseFromRow),
+        recipes: recipesWithItems,
       });
       setLoading(false);
     }
@@ -101,7 +134,7 @@ export function useInventoryStore() {
   }, []);
 
   function field<F>(setter: React.Dispatch<React.SetStateAction<F>>, key: keyof F) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setter((s) => ({ ...s, [key]: e.target.value }));
   }
   function fieldChecked<F>(setter: React.Dispatch<React.SetStateAction<F>>, key: keyof F) {
@@ -113,6 +146,10 @@ export function useInventoryStore() {
   const goEstoque = () => setView("estoque");
   const goCaixa = () => setView("caixa");
   const goFinanceiro = () => setView("financeiro");
+  const goReceitas = () => setView("receitas");
+
+  // — busca de produtos —
+  const onProductSearch = (e: React.ChangeEvent<HTMLInputElement>) => setProductSearch(e.target.value);
 
   // — produtos —
   async function submitProductForm() {
@@ -249,6 +286,46 @@ export function useInventoryStore() {
     setPurchaseForm(emptyPurchaseForm());
   }
 
+  async function deletePurchase(purchaseId: string) {
+    const purchase = data.purchases.find((pu) => pu.id === purchaseId);
+    if (!purchase) return;
+    if (!window.confirm("Excluir este registro de compra?")) return;
+    const revertStock = window.confirm("Deseja também descontar a quantidade desta compra do estoque atual do produto?");
+
+    const { error } = await supabase.from("purchases").delete().eq("id", purchaseId);
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (revertStock) {
+      const product = data.products.find((p) => p.id === purchase.productId);
+      if (product) {
+        const newStock = Math.max(0, product.estoque - purchase.qtd);
+        const { data: prodRow, error: prodErr } = await supabase
+          .from("products")
+          .update({ estoque: newStock })
+          .eq("id", product.id)
+          .select()
+          .single();
+        if (!prodErr && prodRow) {
+          const updated = productFromRow(prodRow);
+          setDataRaw((d) => ({
+            ...d,
+            purchases: d.purchases.filter((pu) => pu.id !== purchaseId),
+            products: d.products.map((p) => (p.id === product.id ? { ...updated, variations: p.variations } : p)),
+          }));
+          return;
+        }
+      }
+    }
+
+    setDataRaw((d) => ({
+      ...d,
+      purchases: d.purchases.filter((pu) => pu.id !== purchaseId),
+    }));
+  }
+
   // — variações —
   async function setVariationGroupName(productId: string, name: string) {
     const { data: row, error } = await supabase
@@ -323,7 +400,6 @@ export function useInventoryStore() {
   }
 
   async function toggleVariationActive(variationId: string) {
-    // Find the variation
     let currentVariation: ProductVariation | undefined;
     for (const p of data.products) {
       currentVariation = p.variations.find((v) => v.id === variationId);
@@ -485,7 +561,6 @@ export function useInventoryStore() {
     const product = data.products.find((p) => p.id === productId);
     if (!product) return;
     if (product.variations.length > 0) {
-      // Show variation picker
       setVariationPickerProductId(variationPickerProductId === productId ? null : productId);
     } else {
       addToCart(productId, null);
@@ -666,6 +741,150 @@ export function useInventoryStore() {
     setDataRaw((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) }));
   }
 
+  // — receitas —
+  async function submitRecipeForm() {
+    const f = recipeForm;
+    if (!f.nome.trim()) return;
+    const { data: row, error } = await supabase
+      .from("recipes")
+      .insert({ nome: f.nome, descricao: f.descricao, rendimento: f.rendimento })
+      .select()
+      .single();
+    if (error) {
+      console.error(error);
+      return;
+    }
+    const newRecipe = recipeFromRow(row);
+    setDataRaw((d) => ({ ...d, recipes: [...d.recipes, newRecipe] }));
+    setRecipeForm(emptyRecipeForm());
+    setExpandedRecipeId(newRecipe.id);
+  }
+
+  async function deleteRecipe(id: string) {
+    if (!window.confirm("Excluir esta receita?")) return;
+    const { error } = await supabase.from("recipes").delete().eq("id", id);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setDataRaw((d) => ({
+      ...d,
+      recipes: d.recipes.filter((r) => r.id !== id),
+    }));
+    if (expandedRecipeId === id) setExpandedRecipeId(null);
+  }
+
+  async function addRecipeItem(recipeId: string) {
+    const f = recipeItemForm;
+    const productId = f.productId;
+    const qtd = Number(f.qtd) || 0;
+    if (!productId || qtd <= 0) return;
+    const variationId = f.variationId || null;
+
+    const { data: row, error } = await supabase
+      .from("recipe_items")
+      .insert({
+        recipe_id: recipeId,
+        product_id: productId,
+        variation_id: variationId,
+        qtd,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error(error);
+      return;
+    }
+    const newItem = recipeItemFromRow(row);
+    setDataRaw((d) => ({
+      ...d,
+      recipes: d.recipes.map((r) =>
+        r.id === recipeId ? { ...r, itens: [...r.itens, newItem] } : r
+      ),
+    }));
+    setRecipeItemForm(emptyRecipeItemForm());
+  }
+
+  async function deleteRecipeItem(recipeId: string, itemId: string) {
+    const { error } = await supabase.from("recipe_items").delete().eq("id", itemId);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setDataRaw((d) => ({
+      ...d,
+      recipes: d.recipes.map((r) =>
+        r.id === recipeId ? { ...r, itens: r.itens.filter((i) => i.id !== itemId) } : r
+      ),
+    }));
+  }
+
+  async function produceRecipe(recipeId: string, multiplier: number = 1) {
+    const recipe = data.recipes.find((r) => r.id === recipeId);
+    if (!recipe || recipe.itens.length === 0) return;
+    if (!window.confirm(`Dar baixa no estoque para produção de ${multiplier}x da receita "${recipe.nome}"?`)) return;
+
+    // Deduct stock for each recipe item
+    const productUpdates: Promise<any>[] = [];
+    const variationUpdates: Promise<any>[] = [];
+
+    recipe.itens.forEach((item) => {
+      const qtdTotal = item.qtd * multiplier;
+      if (item.variationId) {
+        // deduct from variation
+        let vStock = 0;
+        for (const p of data.products) {
+          const v = p.variations.find((v) => v.id === item.variationId);
+          if (v) {
+            vStock = v.estoque;
+            break;
+          }
+        }
+        const novoEstoque = Math.max(0, vStock - qtdTotal);
+        variationUpdates.push(
+          Promise.resolve(supabase.from("product_variations").update({ estoque: novoEstoque }).eq("id", item.variationId).select().single())
+        );
+      } else {
+        // deduct from product
+        const p = data.products.find((x) => x.id === item.productId);
+        const novoEstoque = Math.max(0, (p ? p.estoque : 0) - qtdTotal);
+        productUpdates.push(
+          Promise.resolve(supabase.from("products").update({ estoque: novoEstoque }).eq("id", item.productId).select().single())
+        );
+      }
+    });
+
+    const [pRes, vRes] = await Promise.all([Promise.all(productUpdates), Promise.all(variationUpdates)]);
+
+    const updatedProducts = new Map<string, Product>();
+    pRes.forEach((u) => {
+      if (u.data) {
+        const prod = productFromRow(u.data);
+        updatedProducts.set(prod.id, prod);
+      }
+    });
+
+    const updatedVariations = new Map<string, ProductVariation>();
+    vRes.forEach((u) => {
+      if (u.data) {
+        const v = variationFromRow(u.data);
+        updatedVariations.set(v.id, v);
+      }
+    });
+
+    setDataRaw((d) => ({
+      ...d,
+      products: d.products.map((p) => {
+        const updatedProd = updatedProducts.get(p.id);
+        const baseProduct = updatedProd ? { ...updatedProd, variations: p.variations } : p;
+        return {
+          ...baseProduct,
+          variations: baseProduct.variations.map((v) => updatedVariations.get(v.id) ?? v),
+        };
+      }),
+    }));
+  }
+
   return {
     view,
     data,
@@ -674,7 +893,10 @@ export function useInventoryStore() {
     goEstoque,
     goCaixa,
     goFinanceiro,
+    goReceitas,
 
+    productSearch,
+    onProductSearch,
     productForm,
     setProductForm,
     field,
@@ -689,6 +911,7 @@ export function useInventoryStore() {
     purchaseForm,
     setPurchaseForm,
     submitPurchase,
+    deletePurchase,
 
     // Variations
     variationForm,
@@ -739,6 +962,19 @@ export function useInventoryStore() {
     submitExpense,
     toggleExpensePaid,
     deleteExpense,
+
+    // Receitas
+    recipeForm,
+    setRecipeForm,
+    recipeItemForm,
+    setRecipeItemForm,
+    expandedRecipeId,
+    setExpandedRecipeId,
+    submitRecipeForm,
+    deleteRecipe,
+    addRecipeItem,
+    deleteRecipeItem,
+    produceRecipe,
   };
 }
 

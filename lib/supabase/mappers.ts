@@ -1,4 +1,4 @@
-import { Expense, ManualPayment, Product, ProductVariation, Purchase, Sale } from "../types";
+import { Expense, ManualPayment, Product, ProductVariation, Purchase, Recipe, RecipeItem, Sale } from "../types";
 
 export type ProductRow = {
   id: string;
@@ -55,6 +55,21 @@ export type ExpenseRow = {
   descricao: string;
   valor: number;
   pago: boolean;
+};
+
+export type RecipeRow = {
+  id: string;
+  nome: string;
+  descricao: string;
+  rendimento: string;
+};
+
+export type RecipeItemRow = {
+  id: string;
+  recipe_id: string;
+  product_id: string;
+  variation_id?: string | null;
+  qtd: number;
 };
 
 export const productFromRow = (r: ProductRow): Product => ({
@@ -114,3 +129,20 @@ export const expenseFromRow = (r: ExpenseRow): Expense => ({
   valor: Number(r.valor),
   pago: r.pago,
 });
+
+export const recipeFromRow = (r: RecipeRow): Recipe => ({
+  id: r.id,
+  nome: r.nome,
+  descricao: r.descricao ?? "",
+  rendimento: r.rendimento ?? "",
+  itens: [],
+});
+
+export const recipeItemFromRow = (r: RecipeItemRow): RecipeItem => ({
+  id: r.id,
+  recipeId: r.recipe_id,
+  productId: r.product_id,
+  variationId: r.variation_id ?? null,
+  qtd: Number(r.qtd),
+});
+

@@ -8,13 +8,15 @@ const NAV_ITEMS: { view: View; label: string }[] = [
   { view: "estoque", label: "Estoque" },
   { view: "caixa", label: "Caixa" },
   { view: "financeiro", label: "Financeiro" },
+  { view: "receitas", label: "Receitas" },
 ];
 
-const GO: Record<View, keyof Pick<InventoryStore, "goProdutos" | "goEstoque" | "goCaixa" | "goFinanceiro">> = {
+const GO: Record<View, keyof Pick<InventoryStore, "goProdutos" | "goEstoque" | "goCaixa" | "goFinanceiro" | "goReceitas">> = {
   produtos: "goProdutos",
   estoque: "goEstoque",
   caixa: "goCaixa",
   financeiro: "goFinanceiro",
+  receitas: "goReceitas",
 };
 
 export function Sidebar({ store }: { store: InventoryStore }) {
