@@ -174,6 +174,32 @@ export function CaixaView({ store }: { store: InventoryStore }) {
           <button className="btn-primary btn-block" onClick={store.finalizeSale}>
             Finalizar venda
           </button>
+
+          {/* Lançamento Retroativo / Data Customizada */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 8 }}>
+            <label className="field-label-sm">
+              Data da venda (opcional, para vendas passadas)
+              <input
+                type="date"
+                className="input-sm"
+                value={store.saleCustomDate}
+                onChange={(e) => store.setSaleCustomDate(e.target.value)}
+              />
+            </label>
+            <label className="field-check" style={{ fontSize: 11, color: store.saleNaoDescontarEstoque ? "var(--color-accent-700)" : "inherit", fontWeight: store.saleNaoDescontarEstoque ? 600 : 400 }}>
+              <input
+                type="checkbox"
+                checked={store.saleNaoDescontarEstoque}
+                onChange={(e) => store.setSaleNaoDescontarEstoque(e.target.checked)}
+              />
+              Lançamento retroativo (não descontar do estoque)
+            </label>
+            {store.saleNaoDescontarEstoque && (
+              <div style={{ fontSize: 10, color: "var(--color-accent-700)", lineHeight: 1.3 }}>
+                ● A venda será anotada no histórico e no financeiro sem alterar o estoque atual.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -201,6 +227,58 @@ export function CaixaView({ store }: { store: InventoryStore }) {
             <div className="stat-value">{fmtMoney(byMetodoHoje("cartao_debito"))}</div>
           </div>
         </div>
+
+        {/* Tabela de Vendas de Hoje */}
+        {vendasHoje.length > 0 && (
+          <div className="table-panel" style={{ marginTop: 20 }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", fontWeight: 700, fontSize: 13, color: "color-mix(in srgb, var(--color-text) 60%, transparent)", textTransform: "uppercase" }}>
+              Vendas Realizadas Hoje ({vendasHoje.length})
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Itens Vendidos</th>
+                  <th>Pagamento</th>
+                  <th>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendasHoje.slice().reverse().map((v) => {
+                  const METODO_LABELS: Record<string, string> = {
+                    pix: "Pix",
+                    dinheiro: "Dinheiro",
+                    cartao: "Cartão",
+                    cartao_credito: "Crédito",
+                    cartao_debito: "Débito",
+                  };
+                  return (
+                    <tr key={v.id}>
+                      <td style={{ fontSize: 13, color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>{v.data}</td>
+                      <td style={{ fontSize: 13, fontWeight: 500 }}>
+                        {v.itens.map((i) => `${i.qtd}x ${i.nome}`).join(", ")}
+                      </td>
+                      <td>
+                        <span className="variation-badge" style={{ textTransform: "none" }}>
+                          {METODO_LABELS[v.pagamento] ?? v.pagamento}
+                        </span>
+                      </td>
+                      <td className="num" style={{ fontWeight: 700, color: "var(--color-accent-700)" }}>
+                        {fmtMoney(v.total)}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button className="btn-small-danger" onClick={() => store.deleteSale(v.id)}>
+                          Excluir Venda
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

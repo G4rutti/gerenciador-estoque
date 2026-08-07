@@ -56,6 +56,8 @@ export function useInventoryStore() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [caixaSearch, setCaixaSearch] = useState("");
   const [pagamentoMetodo, setPagamentoMetodo] = useState<PagamentoMetodo>("pix");
+  const [saleCustomDate, setSaleCustomDate] = useState<string>("");
+  const [saleNaoDescontarEstoque, setSaleNaoDescontarEstoque] = useState<boolean>(false);
   const [finTab, setFinTab] = useState<FinTab>("recebimentos");
   const [manualPayForm, setManualPayForm] = useState<ManualPayForm>(emptyManualPayForm());
   const [expenseForm, setExpenseForm] = useState<ExpenseForm>(emptyExpenseForm());
@@ -602,12 +604,13 @@ export function useInventoryStore() {
         }
       }
 
-      return { productId: c.productId, nome, qtd: c.qtd, precoVenda };
+      return { productId: c.productId, variationId: c.variationId || null, nome, qtd: c.qtd, precoVenda };
     });
     const total = itens.reduce((sum, i) => sum + i.qtd * i.precoVenda, 0);
+    const dataVenda = saleCustomDate.trim() || todayStr();
     const { data: saleRow, error: saleErr } = await supabase
       .from("sales")
-      .insert({ data: todayStr(), itens, total, pagamento: pagamentoMetodo })
+      .insert({ data: dataVenda, itens, total, pagamento: pagamentoMetodo })
       .select()
       .single();
     if (saleErr) {
@@ -615,6 +618,17 @@ export function useInventoryStore() {
       return;
     }
     const venda = saleFromRow(saleRow);
+
+    if (saleNaoDescontarEstoque) {
+      setDataRaw((d) => ({
+        ...d,
+        sales: [...d.sales, venda],
+      }));
+      setCart([]);
+      setSaleCustomDate("");
+      setSaleNaoDescontarEstoque(false);
+      return;
+    }
 
     // Update stock for products without variations
     const productOnlyItems = cart.filter((c) => !c.variationId);
@@ -670,6 +684,77 @@ export function useInventoryStore() {
       }),
     }));
     setCart([]);
+    setSaleCustomDate("");
+    setSaleNaoDescontarEstoque(false);
+  }
+
+  async function deleteSale(saleId: string) {
+    const sale = data.sales.find((s) => s.id === saleId);
+    if (!sale) return;
+    if (!window.confirm("Excluir esta venda e estornar a quantidade dos itens de volta ao estoque?")) return;
+
+    const { error } = await supabase.from("sales").delete().eq("id", saleId);
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const productUpdates: Promise<any>[] = [];
+    const variationUpdates: Promise<any>[] = [];
+
+    sale.itens.forEach((item) => {
+      if (item.variationId) {
+        let vStock = 0;
+        for (const p of data.products) {
+          const v = p.variations.find((v) => v.id === item.variationId);
+          if (v) {
+            vStock = v.estoque;
+            break;
+          }
+        }
+        const novoEstoque = vStock + item.qtd;
+        variationUpdates.push(
+          Promise.resolve(supabase.from("product_variations").update({ estoque: novoEstoque }).eq("id", item.variationId).select().single())
+        );
+      } else {
+        const p = data.products.find((x) => x.id === item.productId);
+        const novoEstoque = (p ? p.estoque : 0) + item.qtd;
+        productUpdates.push(
+          Promise.resolve(supabase.from("products").update({ estoque: novoEstoque }).eq("id", item.productId).select().single())
+        );
+      }
+    });
+
+    const [pRes, vRes] = await Promise.all([Promise.all(productUpdates), Promise.all(variationUpdates)]);
+
+    const updatedProducts = new Map<string, Product>();
+    pRes.forEach((u) => {
+      if (u.data) {
+        const prod = productFromRow(u.data);
+        updatedProducts.set(prod.id, prod);
+      }
+    });
+
+    const updatedVariations = new Map<string, ProductVariation>();
+    vRes.forEach((u) => {
+      if (u.data) {
+        const v = variationFromRow(u.data);
+        updatedVariations.set(v.id, v);
+      }
+    });
+
+    setDataRaw((d) => ({
+      ...d,
+      sales: d.sales.filter((s) => s.id !== saleId),
+      products: d.products.map((p) => {
+        const updatedProd = updatedProducts.get(p.id);
+        const baseProduct = updatedProd ? { ...updatedProd, variations: p.variations } : p;
+        return {
+          ...baseProduct,
+          variations: baseProduct.variations.map((v) => updatedVariations.get(v.id) ?? v),
+        };
+      }),
+    }));
   }
 
   // — financeiro —
@@ -677,9 +762,10 @@ export function useInventoryStore() {
     const f = manualPayForm;
     const valor = Number(f.valor) || 0;
     if (valor <= 0) return;
+    const dataPagamento = f.data.trim() || todayStr();
     const { data: row, error } = await supabase
       .from("manual_pagamentos")
-      .insert({ data: todayStr(), tipo: f.tipo, valor, obs: f.obs })
+      .insert({ data: dataPagamento, tipo: f.tipo, valor, obs: f.obs })
       .select()
       .single();
     if (error) {
@@ -949,7 +1035,12 @@ export function useInventoryStore() {
     cartRemove,
     pagamentoMetodo,
     setPagamento,
+    saleCustomDate,
+    setSaleCustomDate,
+    saleNaoDescontarEstoque,
+    setSaleNaoDescontarEstoque,
     finalizeSale,
+    deleteSale,
 
     finTab,
     setFinTab,

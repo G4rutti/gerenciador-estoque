@@ -53,6 +53,7 @@ export type Recipe = {
 
 export type SaleItem = {
   productId: string;
+  variationId?: string | null;
   nome: string;
   qtd: number;
   precoVenda: number;
@@ -123,6 +124,7 @@ export type PurchaseForm = {
 };
 
 export type ManualPayForm = {
+  data: string;
   tipo: PagamentoMetodo;
   valor: string;
   obs: string;
@@ -183,6 +185,7 @@ export const emptyPurchaseForm = (): PurchaseForm => ({
 });
 
 export const emptyManualPayForm = (): ManualPayForm => ({
+  data: "",
   tipo: "pix",
   valor: "",
   obs: "",

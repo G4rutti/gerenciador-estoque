@@ -67,6 +67,15 @@ export function FinanceiroView({ store }: { store: InventoryStore }) {
             <div className="panel-title">Anotar recebimento manual</div>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
               <label className="field-label-sm">
+                Data (opcional)
+                <input
+                  type="date"
+                  className="input-sm"
+                  value={manualPayForm.data}
+                  onChange={field<ManualPayForm>(setManualPayForm, "data")}
+                />
+              </label>
+              <label className="field-label-sm">
                 Tipo
                 <select className="input-sm" value={manualPayForm.tipo} onChange={field<ManualPayForm>(setManualPayForm, "tipo")}>
                   <option value="pix">Pix</option>
@@ -124,9 +133,13 @@ export function FinanceiroView({ store }: { store: InventoryStore }) {
                     </td>
                     <td style={{ color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>{r.obs}</td>
                     <td>
-                      {r.isManual && (
+                      {r.isManual ? (
                         <button className="btn-small-danger" onClick={() => store.deleteManualPayment(r.id)}>
                           Excluir
+                        </button>
+                      ) : (
+                        <button className="btn-small-danger" onClick={() => store.deleteSale(r.id)}>
+                          Excluir Venda
                         </button>
                       )}
                     </td>
