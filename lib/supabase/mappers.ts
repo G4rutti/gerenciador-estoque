@@ -1,4 +1,4 @@
-import { Expense, ManualPayment, Product, ProductVariation, Purchase, Recipe, RecipeItem, Sale } from "../types";
+import { Expense, ManualPayment, Product, ProductVariation, Purchase, Recipe, RecipeItem, Sale, StockExit } from "../types";
 
 export type ProductRow = {
   id: string;
@@ -55,6 +55,8 @@ export type ExpenseRow = {
   descricao: string;
   valor: number;
   pago: boolean;
+  data_vencimento?: string | null;
+  metodo_pagamento?: string | null;
 };
 
 export type RecipeRow = {
@@ -62,6 +64,8 @@ export type RecipeRow = {
   nome: string;
   descricao: string;
   rendimento: string;
+  produto_final_id?: string | null;
+  rendimento_qtd?: number | null;
 };
 
 export type RecipeItemRow = {
@@ -70,6 +74,16 @@ export type RecipeItemRow = {
   product_id: string;
   variation_id?: string | null;
   qtd: number;
+};
+
+export type StockExitRow = {
+  id: string;
+  product_id: string;
+  variation_id?: string | null;
+  data: string;
+  qtd: number;
+  motivo: string;
+  obs: string;
 };
 
 export const productFromRow = (r: ProductRow): Product => ({
@@ -128,6 +142,8 @@ export const expenseFromRow = (r: ExpenseRow): Expense => ({
   descricao: r.descricao,
   valor: Number(r.valor),
   pago: r.pago,
+  dataVencimento: r.data_vencimento ?? "",
+  metodoPagamento: (r.metodo_pagamento as Expense["metodoPagamento"]) ?? "",
 });
 
 export const recipeFromRow = (r: RecipeRow): Recipe => ({
@@ -135,6 +151,8 @@ export const recipeFromRow = (r: RecipeRow): Recipe => ({
   nome: r.nome,
   descricao: r.descricao ?? "",
   rendimento: r.rendimento ?? "",
+  produtoFinalId: r.produto_final_id ?? null,
+  rendimentoQtd: Number(r.rendimento_qtd) || 0,
   itens: [],
 });
 
@@ -146,3 +164,12 @@ export const recipeItemFromRow = (r: RecipeItemRow): RecipeItem => ({
   qtd: Number(r.qtd),
 });
 
+export const stockExitFromRow = (r: StockExitRow): StockExit => ({
+  id: r.id,
+  productId: r.product_id,
+  variationId: r.variation_id ?? null,
+  data: r.data,
+  qtd: Number(r.qtd),
+  motivo: r.motivo as StockExit["motivo"],
+  obs: r.obs ?? "",
+});

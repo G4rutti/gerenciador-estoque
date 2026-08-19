@@ -48,6 +48,8 @@ export type Recipe = {
   nome: string;
   descricao: string;
   rendimento: string;
+  produtoFinalId: string | null;
+  rendimentoQtd: number;
   itens: RecipeItem[];
 };
 
@@ -75,7 +77,7 @@ export type ManualPayment = {
   obs: string;
 };
 
-export type ExpenseTipo = "mercado" | "geral";
+export type ExpenseTipo = "mercado" | "geral" | "producao";
 
 export type Expense = {
   id: string;
@@ -84,6 +86,20 @@ export type Expense = {
   descricao: string;
   valor: number;
   pago: boolean;
+  dataVencimento: string;
+  metodoPagamento: PagamentoMetodo | "";
+};
+
+export type StockExitMotivo = "consumo_pessoal" | "doacao" | "perda";
+
+export type StockExit = {
+  id: string;
+  productId: string;
+  variationId: string | null;
+  data: string;
+  qtd: number;
+  motivo: StockExitMotivo;
+  obs: string;
 };
 
 export type AppData = {
@@ -93,10 +109,11 @@ export type AppData = {
   manualPagamentos: ManualPayment[];
   expenses: Expense[];
   recipes: Recipe[];
+  stockExits: StockExit[];
 };
 
 export type View = "produtos" | "estoque" | "caixa" | "financeiro" | "receitas";
-export type FinTab = "recebimentos" | "gastos";
+export type FinTab = "recebimentos" | "gastos" | "balanco";
 
 export type ProductForm = {
   nome: string;
@@ -135,12 +152,24 @@ export type ExpenseForm = {
   descricao: string;
   valor: string;
   pago: boolean;
+  dataVencimento: string;
+  metodoPagamento: PagamentoMetodo | "";
+};
+
+export type StockExitForm = {
+  productId: string;
+  variationId: string;
+  qtd: string;
+  motivo: StockExitMotivo;
+  obs: string;
 };
 
 export type RecipeForm = {
   nome: string;
   descricao: string;
   rendimento: string;
+  produtoFinalId: string;
+  rendimentoQtd: string;
 };
 
 export type RecipeItemForm = {
@@ -157,6 +186,12 @@ export const UNIT_LABELS: Record<Unidade, string> = {
   ml: "ml",
 };
 
+export const MOTIVO_LABELS: Record<StockExitMotivo, string> = {
+  consumo_pessoal: "Consumo pessoal",
+  doacao: "Doação",
+  perda: "Perda / descarte",
+};
+
 export const emptyAppData = (): AppData => ({
   products: [],
   purchases: [],
@@ -164,6 +199,7 @@ export const emptyAppData = (): AppData => ({
   manualPagamentos: [],
   expenses: [],
   recipes: [],
+  stockExits: [],
 });
 
 export const emptyProductForm = (): ProductForm => ({
@@ -196,6 +232,16 @@ export const emptyExpenseForm = (): ExpenseForm => ({
   descricao: "",
   valor: "",
   pago: false,
+  dataVencimento: "",
+  metodoPagamento: "",
+});
+
+export const emptyStockExitForm = (): StockExitForm => ({
+  productId: "",
+  variationId: "",
+  qtd: "",
+  motivo: "consumo_pessoal",
+  obs: "",
 });
 
 export const emptyVariationForm = (): VariationForm => ({
@@ -209,6 +255,8 @@ export const emptyRecipeForm = (): RecipeForm => ({
   nome: "",
   descricao: "",
   rendimento: "",
+  produtoFinalId: "",
+  rendimentoQtd: "",
 });
 
 export const emptyRecipeItemForm = (): RecipeItemForm => ({

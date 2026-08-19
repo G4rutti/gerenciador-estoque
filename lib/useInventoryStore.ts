@@ -11,6 +11,7 @@ import {
   recipeFromRow,
   recipeItemFromRow,
   saleFromRow,
+  stockExitFromRow,
   variationFromRow,
 } from "./supabase/mappers";
 import {
@@ -29,6 +30,8 @@ import {
   RecipeForm,
   RecipeItem,
   RecipeItemForm,
+  StockExit,
+  StockExitForm,
   VariationForm,
   View,
   emptyAppData,
@@ -38,6 +41,7 @@ import {
   emptyPurchaseForm,
   emptyRecipeForm,
   emptyRecipeItemForm,
+  emptyStockExitForm,
   emptyVariationForm,
 } from "./types";
 
@@ -73,10 +77,18 @@ export function useInventoryStore() {
   const [stockEditVariationValue, setStockEditVariationValue] = useState("");
   const [variationPickerProductId, setVariationPickerProductId] = useState<string | null>(null);
 
+  // Stock exit state (consumo pessoal / doação / perda)
+  const [stockExitForm, setStockExitForm] = useState<StockExitForm>(emptyStockExitForm());
+
+  // Weight input state for kg products in cart
+  const [weightInputProductId, setWeightInputProductId] = useState<string | null>(null);
+  const [weightInputVariationId, setWeightInputVariationId] = useState<string | null>(null);
+  const [weightInputValue, setWeightInputValue] = useState("");
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [products, purchases, sales, manualPagamentos, expenses, variations, recipesRes, recipeItemsRes] = await Promise.all([
+      const [products, purchases, sales, manualPagamentos, expenses, variations, recipesRes, recipeItemsRes, stockExitsRes] = await Promise.all([
         supabase.from("products").select("*").order("created_at"),
         supabase.from("purchases").select("*").order("created_at"),
         supabase.from("sales").select("*").order("created_at"),
@@ -85,6 +97,7 @@ export function useInventoryStore() {
         supabase.from("product_variations").select("*").order("ordem"),
         supabase.from("recipes").select("*").order("created_at"),
         supabase.from("recipe_items").select("*").order("created_at"),
+        supabase.from("stock_exits").select("*").order("created_at"),
       ]);
       if (cancelled) return;
 
@@ -126,6 +139,7 @@ export function useInventoryStore() {
         manualPagamentos: (manualPagamentos.data ?? []).map(manualPaymentFromRow),
         expenses: (expenses.data ?? []).map(expenseFromRow),
         recipes: recipesWithItems,
+        stockExits: (stockExitsRes.data ?? []).map(stockExitFromRow),
       });
       setLoading(false);
     }
@@ -542,6 +556,124 @@ export function useInventoryStore() {
     }));
   }
 
+  // — saídas de estoque (consumo pessoal / doação / perda) —
+  async function submitStockExit() {
+    const f = stockExitForm;
+    const qtd = Number(f.qtd) || 0;
+    if (!f.productId || qtd <= 0) return;
+    const variationId = f.variationId || null;
+
+    // Deduct stock
+    if (variationId) {
+      let currentV: ProductVariation | undefined;
+      for (const p of data.products) {
+        currentV = p.variations.find((v) => v.id === variationId);
+        if (currentV) break;
+      }
+      if (!currentV) return;
+      const novoEstoque = Math.max(0, currentV.estoque - qtd);
+      const { error: stockErr } = await supabase
+        .from("product_variations")
+        .update({ estoque: novoEstoque })
+        .eq("id", variationId);
+      if (stockErr) { console.error(stockErr); return; }
+    } else {
+      const product = data.products.find((p) => p.id === f.productId);
+      if (!product) return;
+      const novoEstoque = Math.max(0, product.estoque - qtd);
+      const { error: stockErr } = await supabase
+        .from("products")
+        .update({ estoque: novoEstoque })
+        .eq("id", f.productId);
+      if (stockErr) { console.error(stockErr); return; }
+    }
+
+    // Insert stock exit record
+    const { data: row, error } = await supabase
+      .from("stock_exits")
+      .insert({
+        product_id: f.productId,
+        variation_id: variationId,
+        data: todayStr(),
+        qtd,
+        motivo: f.motivo,
+        obs: f.obs,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error(error);
+      return;
+    }
+    const exit = stockExitFromRow(row);
+
+    // Update local state
+    if (variationId) {
+      setDataRaw((d) => ({
+        ...d,
+        stockExits: [...d.stockExits, exit],
+        products: d.products.map((p) => ({
+          ...p,
+          variations: p.variations.map((v) =>
+            v.id === variationId ? { ...v, estoque: Math.max(0, v.estoque - qtd) } : v
+          ),
+        })),
+      }));
+    } else {
+      setDataRaw((d) => ({
+        ...d,
+        stockExits: [...d.stockExits, exit],
+        products: d.products.map((p) =>
+          p.id === f.productId ? { ...p, estoque: Math.max(0, p.estoque - qtd) } : p
+        ),
+      }));
+    }
+    setStockExitForm(emptyStockExitForm());
+  }
+
+  async function deleteStockExit(id: string) {
+    if (!window.confirm("Excluir esta saída e estornar a quantidade de volta ao estoque?")) return;
+    const exit = data.stockExits.find((e) => e.id === id);
+    if (!exit) return;
+
+    const { error } = await supabase.from("stock_exits").delete().eq("id", id);
+    if (error) { console.error(error); return; }
+
+    // Revert stock
+    if (exit.variationId) {
+      let currentV: ProductVariation | undefined;
+      for (const p of data.products) {
+        currentV = p.variations.find((v) => v.id === exit.variationId);
+        if (currentV) break;
+      }
+      if (currentV) {
+        await supabase.from("product_variations").update({ estoque: currentV.estoque + exit.qtd }).eq("id", exit.variationId);
+        setDataRaw((d) => ({
+          ...d,
+          stockExits: d.stockExits.filter((e) => e.id !== id),
+          products: d.products.map((p) => ({
+            ...p,
+            variations: p.variations.map((v) =>
+              v.id === exit.variationId ? { ...v, estoque: v.estoque + exit.qtd } : v
+            ),
+          })),
+        }));
+      }
+    } else {
+      const product = data.products.find((p) => p.id === exit.productId);
+      if (product) {
+        await supabase.from("products").update({ estoque: product.estoque + exit.qtd }).eq("id", exit.productId);
+        setDataRaw((d) => ({
+          ...d,
+          stockExits: d.stockExits.filter((e) => e.id !== id),
+          products: d.products.map((p) =>
+            p.id === exit.productId ? { ...p, estoque: p.estoque + exit.qtd } : p
+          ),
+        }));
+      }
+    }
+  }
+
   // — caixa —
   const onCaixaSearch = (e: React.ChangeEvent<HTMLInputElement>) => setCaixaSearch(e.target.value);
 
@@ -559,14 +691,66 @@ export function useInventoryStore() {
     setVariationPickerProductId(null);
   }
 
+  function addToCartWithWeight(productId: string, variationId: string | null, weight: number) {
+    if (weight <= 0) return;
+    const existing = cart.find((c) => c.productId === productId && c.variationId === variationId);
+    if (existing) {
+      setCart(cart.map((c) =>
+        c.productId === productId && c.variationId === variationId
+          ? { ...c, qtd: c.qtd + weight }
+          : c
+      ));
+    } else {
+      setCart([...cart, { productId, variationId, qtd: weight }]);
+    }
+    setWeightInputProductId(null);
+    setWeightInputVariationId(null);
+    setWeightInputValue("");
+    setVariationPickerProductId(null);
+  }
+
   function handleAddToCart(productId: string) {
     const product = data.products.find((p) => p.id === productId);
     if (!product) return;
+
+    // Products sold by weight open a weight input instead
+    const isWeightUnit = product.unidade === "kg" || product.unidade === "g";
+
     if (product.variations.length > 0) {
       setVariationPickerProductId(variationPickerProductId === productId ? null : productId);
+    } else if (isWeightUnit) {
+      // Open weight input
+      setWeightInputProductId(productId);
+      setWeightInputVariationId(null);
+      setWeightInputValue("");
     } else {
       addToCart(productId, null);
     }
+  }
+
+  function handleAddVariationToCart(productId: string, variationId: string) {
+    const product = data.products.find((p) => p.id === productId);
+    if (!product) return;
+    const isWeightUnit = product.unidade === "kg" || product.unidade === "g";
+    if (isWeightUnit) {
+      setWeightInputProductId(productId);
+      setWeightInputVariationId(variationId);
+      setWeightInputValue("");
+    } else {
+      addToCart(productId, variationId);
+    }
+  }
+
+  function confirmWeightInput() {
+    const weight = Number(weightInputValue) || 0;
+    if (weight <= 0 || !weightInputProductId) return;
+    addToCartWithWeight(weightInputProductId, weightInputVariationId, weight);
+  }
+
+  function cancelWeightInput() {
+    setWeightInputProductId(null);
+    setWeightInputVariationId(null);
+    setWeightInputValue("");
   }
 
   const cartInc = (productId: string, variationId: string | null) =>
@@ -588,6 +772,18 @@ export function useInventoryStore() {
   const cartRemove = (productId: string, variationId: string | null) =>
     setCart(cart.filter((c) => !(c.productId === productId && c.variationId === variationId)));
   const setPagamento = (m: PagamentoMetodo) => setPagamentoMetodo(m);
+
+  function cartSetQtd(productId: string, variationId: string | null, qtd: number) {
+    if (qtd <= 0) {
+      cartRemove(productId, variationId);
+      return;
+    }
+    setCart(cart.map((c) =>
+      c.productId === productId && c.variationId === variationId
+        ? { ...c, qtd }
+        : c
+    ));
+  }
 
   async function finalizeSale() {
     if (cart.length === 0) return;
@@ -777,6 +973,7 @@ export function useInventoryStore() {
     setManualPayForm(emptyManualPayForm());
   }
   async function deleteManualPayment(id: string) {
+    if (!window.confirm("Excluir este recebimento?")) return;
     const { error } = await supabase.from("manual_pagamentos").delete().eq("id", id);
     if (error) {
       console.error(error);
@@ -791,7 +988,15 @@ export function useInventoryStore() {
     if (valor <= 0 || !f.descricao.trim()) return;
     const { data: row, error } = await supabase
       .from("expenses")
-      .insert({ data: todayStr(), tipo: f.tipo, descricao: f.descricao, valor, pago: f.pago })
+      .insert({
+        data: todayStr(),
+        tipo: f.tipo,
+        descricao: f.descricao,
+        valor,
+        pago: f.pago,
+        data_vencimento: f.dataVencimento || null,
+        metodo_pagamento: f.metodoPagamento || null,
+      })
       .select()
       .single();
     if (error) {
@@ -819,6 +1024,7 @@ export function useInventoryStore() {
     setDataRaw((d) => ({ ...d, expenses: d.expenses.map((e) => (e.id === id ? updated : e)) }));
   }
   async function deleteExpense(id: string) {
+    if (!window.confirm("Excluir esta despesa?")) return;
     const { error } = await supabase.from("expenses").delete().eq("id", id);
     if (error) {
       console.error(error);
@@ -833,7 +1039,13 @@ export function useInventoryStore() {
     if (!f.nome.trim()) return;
     const { data: row, error } = await supabase
       .from("recipes")
-      .insert({ nome: f.nome, descricao: f.descricao, rendimento: f.rendimento })
+      .insert({
+        nome: f.nome,
+        descricao: f.descricao,
+        rendimento: f.rendimento,
+        produto_final_id: f.produtoFinalId || null,
+        rendimento_qtd: Number(f.rendimentoQtd) || 0,
+      })
       .select()
       .single();
     if (error) {
@@ -844,6 +1056,27 @@ export function useInventoryStore() {
     setDataRaw((d) => ({ ...d, recipes: [...d.recipes, newRecipe] }));
     setRecipeForm(emptyRecipeForm());
     setExpandedRecipeId(newRecipe.id);
+  }
+
+  async function updateRecipeFields(recipeId: string, fields: Partial<{ produtoFinalId: string | null; rendimentoQtd: number }>) {
+    const updatePayload: any = {};
+    if ("produtoFinalId" in fields) updatePayload.produto_final_id = fields.produtoFinalId || null;
+    if ("rendimentoQtd" in fields) updatePayload.rendimento_qtd = fields.rendimentoQtd ?? 0;
+
+    const { data: row, error } = await supabase
+      .from("recipes")
+      .update(updatePayload)
+      .eq("id", recipeId)
+      .select()
+      .single();
+    if (error) { console.error(error); return; }
+    const updated = recipeFromRow(row);
+    setDataRaw((d) => ({
+      ...d,
+      recipes: d.recipes.map((r) =>
+        r.id === recipeId ? { ...updated, itens: r.itens } : r
+      ),
+    }));
   }
 
   async function deleteRecipe(id: string) {
@@ -910,6 +1143,13 @@ export function useInventoryStore() {
     if (!recipe || recipe.itens.length === 0) return;
     if (!window.confirm(`Dar baixa no estoque para produção de ${multiplier}x da receita "${recipe.nome}"?`)) return;
 
+    // Calculate production cost
+    const custoTotal = recipe.itens.reduce((sum, item) => {
+      const p = data.products.find((x) => x.id === item.productId);
+      if (!p) return sum;
+      return sum + item.qtd * multiplier * p.custoAtual;
+    }, 0);
+
     // Deduct stock for each recipe item
     const productUpdates: Promise<any>[] = [];
     const variationUpdates: Promise<any>[] = [];
@@ -958,9 +1198,52 @@ export function useInventoryStore() {
       }
     });
 
+    // Register production expense
+    const rendimentoQtd = recipe.rendimentoQtd * multiplier;
+    const descricaoDesp = `Produção: ${multiplier}x ${recipe.nome}` + (rendimentoQtd > 0 ? ` (${rendimentoQtd} unidades)` : "");
+    const { data: expRow } = await supabase
+      .from("expenses")
+      .insert({
+        data: todayStr(),
+        tipo: "producao",
+        descricao: descricaoDesp,
+        valor: custoTotal,
+        pago: true,
+      })
+      .select()
+      .single();
+
+    let newExpense: Expense | null = null;
+    if (expRow) {
+      newExpense = expenseFromRow(expRow);
+    }
+
+    // If recipe has a final product, add produced quantity to its stock
+    let finalProductUpdate: Product | null = null;
+    if (recipe.produtoFinalId && rendimentoQtd > 0) {
+      const finalProd = data.products.find((p) => p.id === recipe.produtoFinalId);
+      if (finalProd) {
+        const novoEstoque = finalProd.estoque + rendimentoQtd;
+        const { data: fpRow } = await supabase
+          .from("products")
+          .update({ estoque: novoEstoque })
+          .eq("id", recipe.produtoFinalId)
+          .select()
+          .single();
+        if (fpRow) {
+          finalProductUpdate = productFromRow(fpRow);
+        }
+      }
+    }
+
     setDataRaw((d) => ({
       ...d,
+      expenses: newExpense ? [...d.expenses, newExpense] : d.expenses,
       products: d.products.map((p) => {
+        // Check if this is the final product that received stock
+        if (finalProductUpdate && p.id === finalProductUpdate.id) {
+          return { ...finalProductUpdate, variations: p.variations };
+        }
         const updatedProd = updatedProducts.get(p.id);
         const baseProduct = updatedProd ? { ...updatedProd, variations: p.variations } : p;
         return {
@@ -1023,16 +1306,24 @@ export function useInventoryStore() {
     confirmSetVariationStock,
     adjustVariationStock,
 
+    // Stock exits
+    stockExitForm,
+    setStockExitForm,
+    submitStockExit,
+    deleteStockExit,
+
     caixaSearch,
     onCaixaSearch,
     cart,
     addToCart,
     handleAddToCart,
+    handleAddVariationToCart,
     variationPickerProductId,
     setVariationPickerProductId,
     cartInc,
     cartDec,
     cartRemove,
+    cartSetQtd,
     pagamentoMetodo,
     setPagamento,
     saleCustomDate,
@@ -1041,6 +1332,14 @@ export function useInventoryStore() {
     setSaleNaoDescontarEstoque,
     finalizeSale,
     deleteSale,
+
+    // Weight input for kg products
+    weightInputProductId,
+    weightInputVariationId,
+    weightInputValue,
+    setWeightInputValue,
+    confirmWeightInput,
+    cancelWeightInput,
 
     finTab,
     setFinTab,
@@ -1062,6 +1361,7 @@ export function useInventoryStore() {
     expandedRecipeId,
     setExpandedRecipeId,
     submitRecipeForm,
+    updateRecipeFields,
     deleteRecipe,
     addRecipeItem,
     deleteRecipeItem,

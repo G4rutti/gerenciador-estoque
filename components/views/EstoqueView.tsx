@@ -3,6 +3,7 @@
 import { InventoryStore } from "@/lib/useInventoryStore";
 import { fmtMoney } from "@/lib/format";
 import { useState } from "react";
+import { MOTIVO_LABELS, StockExitForm } from "@/lib/types";
 
 export function EstoqueView({ store }: { store: InventoryStore }) {
   const { data } = store;
@@ -23,6 +24,8 @@ export function EstoqueView({ store }: { store: InventoryStore }) {
       return next;
     });
   }
+
+  const selectedExitProduct = data.products.find((p) => p.id === store.stockExitForm.productId);
 
   return (
     <div>
@@ -173,6 +176,129 @@ export function EstoqueView({ store }: { store: InventoryStore }) {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Saídas de Estoque — Consumo pessoal / Doação / Perda */}
+      <div style={{ marginTop: 32 }}>
+        <h2 className="page-title" style={{ fontSize: 18, marginBottom: 8 }}>Saídas — Consumo pessoal, doação e perda</h2>
+        <div className="page-subtitle" style={{ marginBottom: 16 }}>
+          Registre retiradas do estoque que não são vendas (consumo próprio, doações, perdas). O estoque será descontado automaticamente.
+        </div>
+
+        <div className="panel" style={{ marginBottom: 20, maxWidth: 720 }}>
+          <div className="panel-title">Registrar saída</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <label className="field-label-sm" style={{ minWidth: 200, flex: 1 }}>
+              Produto
+              <select
+                className="input-sm"
+                value={store.stockExitForm.productId}
+                onChange={(e) => store.setStockExitForm((f) => ({ ...f, productId: e.target.value, variationId: "" }))}
+              >
+                <option value="">Selecione o produto...</option>
+                {data.products.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nome} (estoque: {p.variations.length > 0 ? p.variations.reduce((s, v) => s + v.estoque, 0) : p.estoque} {p.unidade})</option>
+                ))}
+              </select>
+            </label>
+
+            {selectedExitProduct && selectedExitProduct.variations.length > 0 && (
+              <label className="field-label-sm" style={{ minWidth: 140 }}>
+                Variação
+                <select
+                  className="input-sm"
+                  value={store.stockExitForm.variationId}
+                  onChange={store.field<StockExitForm>(store.setStockExitForm, "variationId")}
+                >
+                  <option value="">Produto principal</option>
+                  {selectedExitProduct.variations.map((v) => (
+                    <option key={v.id} value={v.id}>{v.nome} (estoque: {v.estoque})</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <label className="field-label-sm" style={{ width: 90 }}>
+              Qtd
+              <input
+                className="input-sm"
+                type="number"
+                step="0.01"
+                value={store.stockExitForm.qtd}
+                onChange={store.field<StockExitForm>(store.setStockExitForm, "qtd")}
+                placeholder="0"
+              />
+            </label>
+
+            <label className="field-label-sm">
+              Motivo
+              <select
+                className="input-sm"
+                value={store.stockExitForm.motivo}
+                onChange={store.field<StockExitForm>(store.setStockExitForm, "motivo")}
+              >
+                <option value="consumo_pessoal">Consumo pessoal</option>
+                <option value="doacao">Doação</option>
+                <option value="perda">Perda / descarte</option>
+              </select>
+            </label>
+
+            <label className="field-label-sm" style={{ flex: 1 }}>
+              Obs
+              <input
+                className="input-sm"
+                value={store.stockExitForm.obs}
+                onChange={store.field<StockExitForm>(store.setStockExitForm, "obs")}
+                placeholder="Opcional"
+              />
+            </label>
+
+            <button className="btn-primary-sm" onClick={store.submitStockExit}>
+              Registrar saída
+            </button>
+          </div>
+        </div>
+
+        {data.stockExits.length > 0 && (
+          <div className="table-panel">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Produto</th>
+                  <th>Qtd</th>
+                  <th>Motivo</th>
+                  <th>Obs</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.stockExits.slice().reverse().map((exit) => {
+                  const p = data.products.find((x) => x.id === exit.productId);
+                  let nome = p ? p.nome : "?";
+                  if (exit.variationId && p) {
+                    const v = p.variations.find((v) => v.id === exit.variationId);
+                    if (v) nome = `${p.nome} — ${v.nome}`;
+                  }
+                  return (
+                    <tr key={exit.id}>
+                      <td>{exit.data}</td>
+                      <td style={{ fontWeight: 600 }}>{nome}</td>
+                      <td className="num">{exit.qtd} {p?.unidade ?? ""}</td>
+                      <td>{MOTIVO_LABELS[exit.motivo] ?? exit.motivo}</td>
+                      <td style={{ color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>{exit.obs}</td>
+                      <td>
+                        <button className="btn-small-danger" onClick={() => store.deleteStockExit(exit.id)}>
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -32,6 +32,8 @@ export function CaixaView({ store }: { store: InventoryStore }) {
   const byMetodoHoje = (m: PagamentoMetodo) => vendasHoje.filter((v) => v.pagamento === m).reduce((sum, v) => sum + v.total, 0);
   const hojeTotal = vendasHoje.reduce((sum, v) => sum + v.total, 0);
 
+  const isWeightUnit = (unidade: string) => unidade === "kg" || unidade === "g";
+
   return (
     <div>
       <h1 className="page-title">Caixa</h1>
@@ -51,6 +53,8 @@ export function CaixaView({ store }: { store: InventoryStore }) {
               const totalEstoque = hasVariations
                 ? p.variations.reduce((sum, v) => sum + v.estoque, 0)
                 : p.estoque;
+              const isWeight = isWeightUnit(p.unidade);
+              const isWeightInputOpen = store.weightInputProductId === p.id && !store.weightInputVariationId;
 
               return (
                 <div key={p.id}>
@@ -63,37 +67,98 @@ export function CaixaView({ store }: { store: InventoryStore }) {
                             {p.variations.length} {p.variationGroupName || "var."}
                           </span>
                         )}
+                        {isWeight && (
+                          <span className="variation-badge" style={{ marginLeft: 8, background: "color-mix(in srgb, var(--color-accent-700) 15%, transparent)" }}>
+                            por {p.unidade}
+                          </span>
+                        )}
                       </div>
                       <div className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>
-                        {fmtMoney(p.precoVenda)} · estoque: {totalEstoque} {p.unidade}
+                        {fmtMoney(p.precoVenda)}/{p.unidade} · estoque: {totalEstoque} {p.unidade}
                       </div>
                     </div>
                     <button className="btn-primary-sm" onClick={() => store.handleAddToCart(p.id)}>
-                      {hasVariations ? (isPickerOpen ? "Fechar" : "Escolher") : "Adicionar"}
+                      {hasVariations ? (isPickerOpen ? "Fechar" : "Escolher") : isWeight ? "Pesar" : "Adicionar"}
                     </button>
                   </div>
+
+                  {/* Weight input for products sold by kg/g */}
+                  {isWeightInputOpen && (
+                    <div className="variation-picker" style={{ padding: 12, display: "flex", gap: 10, alignItems: "flex-end" }}>
+                      <label className="field-label-sm" style={{ flex: 1 }}>
+                        Peso ({p.unidade})
+                        <input
+                          type="number"
+                          className="input-sm"
+                          step="0.001"
+                          autoFocus
+                          value={store.weightInputValue}
+                          onChange={(e) => store.setWeightInputValue(e.target.value)}
+                          placeholder={`Ex: 0.500 ${p.unidade}`}
+                          onKeyDown={(e) => { if (e.key === "Enter") store.confirmWeightInput(); }}
+                        />
+                      </label>
+                      {store.weightInputValue && Number(store.weightInputValue) > 0 && (
+                        <div className="num" style={{ fontSize: 13, fontWeight: 600, color: "var(--color-accent-700)", whiteSpace: "nowrap", paddingBottom: 6 }}>
+                          = {fmtMoney(p.precoVenda * Number(store.weightInputValue))}
+                        </div>
+                      )}
+                      <button className="btn-primary-sm" onClick={store.confirmWeightInput}>OK</button>
+                      <button className="btn-step" onClick={store.cancelWeightInput}>✕</button>
+                    </div>
+                  )}
+
                   {/* Variation picker dropdown */}
                   {hasVariations && isPickerOpen && (
                     <div className="variation-picker">
                       {p.variations
                         .filter((v) => v.ativo)
-                        .map((v) => (
-                          <div
-                            key={v.id}
-                            className="variation-picker-item"
-                            onClick={() => store.addToCart(p.id, v.id)}
-                          >
-                            <div>
-                              <span style={{ fontWeight: 600, fontSize: 13 }}>{v.nome}</span>
-                              <span className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)", marginLeft: 8 }}>
-                                {v.precoVenda != null ? fmtMoney(v.precoVenda) : fmtMoney(p.precoVenda)}
-                              </span>
+                        .map((v) => {
+                          const isWeightInputForVar = store.weightInputProductId === p.id && store.weightInputVariationId === v.id;
+                          return (
+                            <div key={v.id}>
+                              <div
+                                className="variation-picker-item"
+                                onClick={() => store.handleAddVariationToCart(p.id, v.id)}
+                              >
+                                <div>
+                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{v.nome}</span>
+                                  <span className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)", marginLeft: 8 }}>
+                                    {v.precoVenda != null ? fmtMoney(v.precoVenda) : fmtMoney(p.precoVenda)}/{p.unidade}
+                                  </span>
+                                </div>
+                                <span className="num" style={{ fontSize: 11, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>
+                                  estoque: {v.estoque}
+                                </span>
+                              </div>
+                              {/* Weight input for variation */}
+                              {isWeight && isWeightInputForVar && (
+                                <div style={{ padding: "8px 12px", display: "flex", gap: 10, alignItems: "flex-end", background: "var(--color-surface)" }}>
+                                  <label className="field-label-sm" style={{ flex: 1 }}>
+                                    Peso ({p.unidade})
+                                    <input
+                                      type="number"
+                                      className="input-sm"
+                                      step="0.001"
+                                      autoFocus
+                                      value={store.weightInputValue}
+                                      onChange={(e) => store.setWeightInputValue(e.target.value)}
+                                      placeholder={`Ex: 0.500 ${p.unidade}`}
+                                      onKeyDown={(e) => { if (e.key === "Enter") store.confirmWeightInput(); }}
+                                    />
+                                  </label>
+                                  {store.weightInputValue && Number(store.weightInputValue) > 0 && (
+                                    <div className="num" style={{ fontSize: 13, fontWeight: 600, color: "var(--color-accent-700)", whiteSpace: "nowrap", paddingBottom: 6 }}>
+                                      = {fmtMoney((v.precoVenda ?? p.precoVenda) * Number(store.weightInputValue))}
+                                    </div>
+                                  )}
+                                  <button className="btn-primary-sm" onClick={store.confirmWeightInput}>OK</button>
+                                  <button className="btn-step" onClick={store.cancelWeightInput}>✕</button>
+                                </div>
+                              )}
                             </div>
-                            <span className="num" style={{ fontSize: 11, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>
-                              estoque: {v.estoque}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   )}
                 </div>
@@ -112,6 +177,7 @@ export function CaixaView({ store }: { store: InventoryStore }) {
               const p = data.products.find((x) => x.id === c.productId);
               let nome = p ? p.nome : "?";
               let preco = p ? p.precoVenda : 0;
+              const isWeight = p && isWeightUnit(p.unidade);
 
               if (c.variationId && p) {
                 const v = p.variations.find((v) => v.id === c.variationId);
@@ -126,18 +192,38 @@ export function CaixaView({ store }: { store: InventoryStore }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{nome}</div>
                     <div className="num" style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 60%, transparent)" }}>
-                      {fmtMoney(preco * c.qtd)}
+                      {isWeight ? (
+                        <>{c.qtd.toFixed(3)} {p?.unidade} × {fmtMoney(preco)} = {fmtMoney(preco * c.qtd)}</>
+                      ) : (
+                        fmtMoney(preco * c.qtd)
+                      )}
                     </div>
                   </div>
-                  <button className="btn-step" onClick={() => store.cartDec(c.productId, c.variationId)}>
-                    –
-                  </button>
-                  <span className="num" style={{ minWidth: 20, textAlign: "center", display: "inline-block" }}>
-                    {c.qtd}
-                  </span>
-                  <button className="btn-step" onClick={() => store.cartInc(c.productId, c.variationId)}>
-                    +
-                  </button>
+                  {isWeight ? (
+                    <>
+                      <input
+                        type="number"
+                        className="input-sm"
+                        style={{ width: 70, textAlign: "center" }}
+                        step="0.001"
+                        value={c.qtd}
+                        onChange={(e) => store.cartSetQtd(c.productId, c.variationId, Number(e.target.value) || 0)}
+                      />
+                      <span style={{ fontSize: 11, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>{p?.unidade}</span>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn-step" onClick={() => store.cartDec(c.productId, c.variationId)}>
+                        –
+                      </button>
+                      <span className="num" style={{ minWidth: 20, textAlign: "center", display: "inline-block" }}>
+                        {c.qtd}
+                      </span>
+                      <button className="btn-step" onClick={() => store.cartInc(c.productId, c.variationId)}>
+                        +
+                      </button>
+                    </>
+                  )}
                   <button className="btn-small-danger" onClick={() => store.cartRemove(c.productId, c.variationId)}>
                     x
                   </button>
